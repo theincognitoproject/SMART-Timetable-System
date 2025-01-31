@@ -1,6 +1,7 @@
 import psycopg2
 from psycopg2 import sql
 import random
+import config
 
 # Data
 classes = ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5',
