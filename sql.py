@@ -1,18 +1,11 @@
 import pandas as pd
-from sqlalchemy import create_engine
-import mysql.connector
+import psycopg2
 import os
-import getpass
 import sys
+from config import DATABASE_URL  # Import DATABASE_URL from config.py
 
 def get_user_inputs():
     """Get all necessary inputs from user"""
-    print("\n=== MySQL Connection Details ===")
-    host = 'localhost'
-    database = input("Enter database name: ")
-    username = 'root'
-    password = getpass.getpass("Enter MySQL password: ")  # Securely input password
-    
     print("\n=== CSV File Details ===")
     while True:
         csv_path = input("Enter the full path to your CSV file: ")
@@ -20,9 +13,9 @@ def get_user_inputs():
             break
         print("Invalid file path or not a CSV file. Please try again.")
     
-    table_name = input("Enter the desired MySQL table name: ")
+    table_name = input("Enter the desired PostgreSQL table name: ")
     
-    return host, database, username, password, csv_path, table_name
+    return csv_path, table_name
 
 def preview_csv(df):
     """Show preview of CSV data"""  
@@ -34,10 +27,24 @@ def preview_csv(df):
     print("\nData Info:")
     print(df.info())
 
-def csv_to_mysql():
+def create_table_if_not_exists(cursor, table_name, df):
+    """Create the table if it doesn't exist"""
+    columns_with_types = []
+    for col in df.columns:
+        columns_with_types.append(f'"{col}" TEXT')  # Adjust column types as needed (e.g., TEXT, INTEGER)
+    
+    create_table_query = f"""
+    CREATE TABLE IF NOT EXISTS "{table_name}" (
+        {', '.join(columns_with_types)}
+    );
+    """
+    cursor.execute(create_table_query)
+    print(f"Table '{table_name}' checked/created successfully.")
+
+def csv_to_postgresql():
     try:
         # Get user inputs
-        host, database, username, password, csv_path, table_name = get_user_inputs()
+        csv_path, table_name = get_user_inputs()
         
         # Read CSV file
         print("\nReading CSV file...")
@@ -58,55 +65,44 @@ def csv_to_mysql():
             print(f"Error reading CSV file: {str(e)}")
             return
 
-        # Create MySQL connection string
-        connection_string = f"mysql+mysqlconnector://{username}:{password}@{host}/{database}"
-        
-        # Create engine
-        print("\nConnecting to MySQL...")
-        engine = create_engine(connection_string)
-        
-        # Test connection
+        # Create PostgreSQL connection
+        print("\nConnecting to PostgreSQL...")
         try:
-            with engine.connect() as conn:
-                print("Successfully connected to MySQL database!")
+            conn = psycopg2.connect(DATABASE_URL)
+            cursor = conn.cursor()
+            print("Successfully connected to PostgreSQL database!")
         except Exception as e:
-            print(f"Error connecting to MySQL: {str(e)}")
+            print(f"Error connecting to PostgreSQL: {str(e)}")
             return
 
-        # Import data to MySQL
-        print("\nImporting data to MySQL...")
+        # Create the table if it doesn't exist
+        create_table_if_not_exists(cursor, table_name, df)
+
+        # Import data to PostgreSQL
+        print("\nImporting data to PostgreSQL...")
         print("This may take a while depending on the file size...")
         
-        # Handle data import with progress tracking
-        total_rows = len(df)
-        chunk_size = 1000
-        
-        for i in range(0, total_rows, chunk_size):
-            chunk_df = df[i:i + chunk_size]
-            if i == 0:
-                # First chunk - replace table if exists
-                chunk_df.to_sql(name=table_name,
-                              con=engine,
-                              if_exists='replace',
-                              index=False)
-            else:
-                # Subsequent chunks - append to table
-                chunk_df.to_sql(name=table_name,
-                              con=engine,
-                              if_exists='append',
-                              index=False)
-            
-            # Show progress
-            progress = min((i + chunk_size) / total_rows * 100, 100)
-            print(f"Progress: {progress:.1f}%", end='\r')
-        
-        print("\nData import completed!")
+        # Handle data import
+        try:
+            for i, row in df.iterrows():
+                columns = ', '.join([f'"{col}"' for col in df.columns])  # Ensure columns are quoted
+                values = ', '.join([f'%s' for _ in row])
+                insert_query = f'INSERT INTO "{table_name}" ({columns}) VALUES ({values})'
+                cursor.execute(insert_query, tuple(row))
+                if i % 1000 == 0:
+                    conn.commit()
+                    print(f"Progress: {i}/{len(df)} rows inserted", end='\r')
+            conn.commit()
+            print("\nData import completed!")
+        except Exception as e:
+            print(f"Error inserting data: {str(e)}")
+            conn.rollback()
         
         # Verify the import
         try:
-            with engine.connect() as conn:
-                result = pd.read_sql(f"SELECT COUNT(*) as count FROM {table_name}", conn)
-                print(f"\nVerification: {result.iloc[0]['count']} rows imported to MySQL table '{table_name}'")
+            cursor.execute(f'SELECT COUNT(*) FROM "{table_name}"')
+            count = cursor.fetchone()[0]
+            print(f"\nVerification: {count} rows imported to PostgreSQL table '{table_name}'")
         except Exception as e:
             print(f"\nError verifying data: {str(e)}")
 
@@ -114,20 +110,23 @@ def csv_to_mysql():
         print(f"\nAn error occurred: {str(e)}")
         
     finally:
-        if 'engine' in locals():
-            engine.dispose()
-            print("\nMySQL connection closed")
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+            print("\nPostgreSQL connection closed")
 
 def main():
-    print("=== CSV to MySQL Import Tool ===")
+    print("=== CSV to PostgreSQL Import Tool ===")
     
     while True:
-        csv_to_mysql()
+        csv_to_postgresql()
         
         retry = input("\nWould you like to import another CSV file? (yes/no): ").lower()
         if retry != 'yes':
             break
     
-    print("\nThank you for using CSV to MySQL Import Tool!")
+    print("\nThank you for using CSV to PostgreSQL Import Tool!")
+
 if __name__ == "__main__":
     main()
