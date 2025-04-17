@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+mysqlclient
+SQLAlchemy
+pymysql
+python-dotenv
+python-jose
+python-multipart
+flask
+flask-cors
+pandas

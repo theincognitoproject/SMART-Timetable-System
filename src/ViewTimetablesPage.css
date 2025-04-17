@@ -1,0 +1,243 @@
+:root {
+  --bg-dark-primary: #121212;
+  --bg-dark-secondary: #1e1e1e;
+  --bg-dark-tertiary: #2c2c2c;
+  --text-light: #ffffff;
+  --text-secondary: #b0b0b0;
+  --accent-color: #4CAF50;
+  --accent-hover: #45a049;
+}
+
+.view-timetables-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--bg-dark-primary);
+  color: var(--text-light);
+}
+
+.timetables-header {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background-color: var(--bg-dark-secondary);
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  font-size: 24px;
+  cursor: pointer;
+  margin-right: 15px;
+}
+
+.theme-toggle {
+  cursor: pointer;
+  font-size: 20px;
+  margin-right: 15px;
+}
+
+.timetable-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 250px;
+  background-color: var(--bg-dark-secondary);
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.view-options {
+  background-color: var(--bg-dark-tertiary);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.view-options h3 {
+  color: var(--text-light);
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  color: var(--text-light);
+  cursor: pointer;
+  position: relative;
+  padding-left: 30px;
+}
+
+.radio-label input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.custom-radio {
+  position: absolute;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background-color: #3c3c3c;
+  border-radius: 50%;
+}
+
+.radio-label input:checked ~ .custom-radio {
+  background-color: var(--accent-color);
+}
+
+.year-sections, 
+.venues-list, 
+.teachers-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.year-sections h5 {
+  color: var(--text-secondary);
+  margin-top: 10px;
+  margin-bottom: 5px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #3c3c3c;
+}
+
+.section-item, 
+.venue-item, 
+.teacher-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.section-item input, 
+.venue-item input, 
+.teacher-item input {
+  margin-right: 10px;
+}
+
+.section-item label, 
+.venue-item label, 
+.teacher-item label {
+  color: var(--text-secondary);
+}
+
+.view-all-btn {
+  margin-top: 15px;
+  background-color: var(--accent-color);
+  color: var(--text-light);
+  border: none;
+  padding: 10px;
+  border-radius: 4px;
+  width: 100%;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.view-all-btn:hover {
+  background-color: var(--accent-hover);
+}
+
+.timetable-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background-color: var(--bg-dark-primary);
+}
+
+.timetables-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.timetable-card {
+  background-color: var(--bg-dark-secondary);
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.timetable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.timetable th, 
+.timetable td {
+  border: 1px solid #3c3c3c;
+  padding: 10px;
+  text-align: center;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+.break-slot {
+  background-color: #3c3c3c;
+  font-weight: bold;
+}
+
+.filled-slot {
+  background-color: #2c3e50;
+}
+
+.empty-slot {
+  background-color: #1a1a1a;
+}
+
+.loading, 
+.error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: var(--text-secondary);
+}
+
+/* Scrollbar Styling */
+.sidebar::-webkit-scrollbar,
+.timetable-content::-webkit-scrollbar,
+.year-sections::-webkit-scrollbar,
+.venues-list::-webkit-scrollbar,
+.teachers-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track,
+.timetable-content::-webkit-scrollbar-track,
+.year-sections::-webkit-scrollbar-track,
+.venues-list::-webkit-scrollbar-track,
+.teachers-list::-webkit-scrollbar-track {
+  background: var(--bg-dark-secondary);
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.timetable-content::-webkit-scrollbar-thumb,
+.year-sections::-webkit-scrollbar-thumb,
+.venues-list::-webkit-scrollbar-thumb,
+.teachers-list::-webkit-scrollbar-thumb {
+  background-color: var(--accent-color);
+  border-radius: 4px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .timetable-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    max-height: 300px;
+  }
+}
