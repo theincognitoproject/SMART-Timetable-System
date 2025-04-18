@@ -1,236 +1,246 @@
-:root {
-  --bg-dark-primary: #121212;
-  --bg-dark-secondary: #1e1e1e;
-  --bg-dark-tertiary: #2c2c2c;
-  --text-light: #ffffff;
-  --text-secondary: #b0b0b0;
-  --accent-color: #4CAF50;
-  --accent-hover: #45a049;
+/* ViewTimetablesPage.css */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
 }
 
 .view-timetables-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: var(--bg-dark-primary);
-  color: var(--text-light);
+  overflow: hidden;
+  background-color: #f4f4f4;
 }
 
+/* Header Styles */
 .timetables-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   padding: 15px;
-  background-color: var(--bg-dark-secondary);
+  background-color: #2c3e50;
+  color: white;
 }
 
 .back-button {
   background: none;
   border: none;
-  color: var(--text-light);
-  font-size: 24px;
+  color: white;
+  font-size: 20px;
   cursor: pointer;
-  margin-right: 15px;
+  transition: color 0.3s ease;
+}
+
+.back-button:hover {
+  color: #3498db;
 }
 
 .theme-toggle {
   cursor: pointer;
   font-size: 20px;
-  margin-right: 15px;
 }
 
+/* Layout Styles */
 .timetable-layout {
   display: flex;
   flex: 1;
   overflow: hidden;
 }
 
+/* Sidebar Styles */
 .sidebar {
   width: 250px;
-  background-color: var(--bg-dark-secondary);
+  background-color: #34495e;
   padding: 20px;
-  overflow-y: auto;
+  overflow: hidden;
+  color: white;
+  border-right: 1px solid #2c3e50;
+  display: flex;
+  flex-direction: column;
 }
 
 .view-options {
-  background-color: var(--bg-dark-tertiary);
-  border-radius: 8px;
-  padding: 20px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .view-options h3 {
-  color: var(--text-light);
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 10px;
   margin-bottom: 15px;
   text-align: center;
 }
 
-.radio-group {
+/* View Type Selector */
+.view-type-selector {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   margin-bottom: 20px;
+  gap: 10px;
 }
 
-.radio-label {
-  display: flex;
-  align-items: center;
-  color: var(--text-light);
+.view-type-selector button {
+  width: 100%;
+  padding: 10px;
+  background-color: #2c3e50;
+  color: white;
+  border: 1px solid #3498db;
   cursor: pointer;
-  position: relative;
-  padding-left: 30px;
+  transition: all 0.3s ease;
+  border-radius: 4px;
 }
 
-.radio-label input {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
+.view-type-selector button.active {
+  background-color: #3498db;
+  color: white;
 }
 
-.custom-radio {
-  position: absolute;
-  left: 0;
-  height: 20px;
-  width: 20px;
-  background-color: #3c3c3c;
-  border-radius: 50%;
+.view-type-selector button:hover {
+  background-color: #34495e;
 }
 
-.radio-label input:checked ~ .custom-radio {
-  background-color: var(--accent-color);
-}
-
-.year-sections, 
-.venues-list, 
-.teachers-list {
-  max-height: 300px;
+/* Timetable Items */
+.timetable-items-container {
+  flex-grow: 1;
   overflow-y: auto;
 }
 
-.year-sections h5 {
-  color: var(--text-secondary);
-  margin-top: 10px;
-  margin-bottom: 5px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #3c3c3c;
-}
-
-.section-item, 
-.venue-item, 
-.teacher-item {
-  display: flex;
-  align-items: center;
+.timetable-items-container h4 {
   margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #3498db;
 }
 
-.section-item input, 
-.venue-item input, 
-.teacher-item input {
-  margin-right: 10px;
-}
-
-.section-item label, 
-.venue-item label, 
-.teacher-item label {
-  color: var(--text-secondary);
-}
-
-.view-all-btn {
-  margin-top: 15px;
-  background-color: var(--accent-color);
-  color: var(--text-light);
-  border: none;
+.timetable-item {
   padding: 10px;
+  margin-bottom: 5px;
+  background-color: #2c3e50;
   border-radius: 4px;
-  width: 100%;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s ease;
 }
 
-.view-all-btn:hover {
-  background-color: var(--accent-hover);
+.timetable-item:hover {
+  background-color: #3498db;
 }
 
+.timetable-item.selected {
+  background-color: #2ecc71;
+  color: white;
+}
+
+/* Timetable Content Styles */
 .timetable-content {
   flex: 1;
-  overflow-y: auto;
   padding: 20px;
-  background-color: var(--bg-dark-primary);
+  overflow-y: auto;
+  background-color: #ecf0f1;
 }
 
-.timetables-container {
+/* Multiple Timetables Layout */
+.multiple-timetables {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100%;
 }
 
-.timetable-card {
-  background-color: var(--bg-dark-secondary);
+.selected-timetable-container {
+  background-color: white;
   border-radius: 8px;
-  padding: 15px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  padding: 20px;
+  width: 100%;
+  overflow-x: auto;
 }
 
+.selected-timetable-container h2 {
+  margin-bottom: 15px;
+  color: #2c3e50;
+  text-align: center;
+}
+
+/* Timetable Styles */
 .timetable {
   width: 100%;
   border-collapse: collapse;
+  min-width: 800px;
 }
 
-.timetable th, 
+.timetable thead {
+  background-color: #3498db;
+  color: white;
+}
+
+.timetable th,
 .timetable td {
-  border: 1px solid #3c3c3c;
+  border: 1px solid #ddd;
   padding: 10px;
   text-align: center;
-  color: var(--text-secondary);
-  white-space: pre-wrap;
 }
 
-.break-slot {
-  background-color: #3c3c3c;
+.timetable .time-slot {
+  font-weight: bold;
+  background-color: #f1f1f1;
+}
+
+.timetable .special-row {
+  background-color: #f9f9f9;
+}
+
+.timetable .break-slot {
+  background-color: #e6e6e6;
   font-weight: bold;
 }
 
-.filled-slot {
-  background-color: #2c3e50;
+.timetable .filled-slot {
+  background-color: #e6f3ff;
 }
 
-.empty-slot {
-  background-color: #1a1a1a;
+.timetable .empty-slot {
+  background-color: #fff;
+  color: #888;
 }
 
-.loading, 
-.error {
+/* Loading and Error Styles */
+.loading,
+.error,
+.placeholder {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100%;
-  color: var(--text-secondary);
+  text-align: center;
+  font-size: 18px;
+  color: #7f8c8d;
 }
 
-/* Scrollbar Styling */
-.sidebar::-webkit-scrollbar,
-.timetable-content::-webkit-scrollbar,
-.year-sections::-webkit-scrollbar,
-.venues-list::-webkit-scrollbar,
-.teachers-list::-webkit-scrollbar {
+.error {
+  color: #e74c3c;
+}
+
+/* Scrollbar Styles */
+.timetable-items-container::-webkit-scrollbar {
   width: 8px;
 }
 
-.sidebar::-webkit-scrollbar-track,
-.timetable-content::-webkit-scrollbar-track,
-.year-sections::-webkit-scrollbar-track,
-.venues-list::-webkit-scrollbar-track,
-.teachers-list::-webkit-scrollbar-track {
-  background: var(--bg-dark-secondary);
+.timetable-items-container::-webkit-scrollbar-track {
+  background: #2c3e50;
 }
 
-.sidebar::-webkit-scrollbar-thumb,
-.timetable-content::-webkit-scrollbar-thumb,
-.year-sections::-webkit-scrollbar-thumb,
-.venues-list::-webkit-scrollbar-thumb,
-.teachers-list::-webkit-scrollbar-thumb {
-  background-color: var(--accent-color);
+.timetable-items-container::-webkit-scrollbar-thumb {
+  background: #3498db;
   border-radius: 4px;
 }
 
-/* Responsive Design */
+/* Responsive Adjustments */
 @media (max-width: 768px) {
   .timetable-layout {
     flex-direction: column;
@@ -240,4 +250,142 @@
     width: 100%;
     max-height: 300px;
   }
+
+  .selected-timetable-container {
+    padding: 10px;
+  }
+
+  .timetable {
+    min-width: 100%;
+  }
+}
+
+/* Dark Mode Styles */
+.view-timetables-page.dark {
+  background-color: #2c3e50; /* Similar to light mode sidebar color */
+  color: #ecf0f1; /* Light text for contrast */
+}
+
+.view-timetables-page.dark .timetables-header {
+  background-color: #233240; /* Slightly darker version of sidebar */
+  color: #ecf0f1;
+}
+
+.view-timetables-page.dark .sidebar {
+  background-color: #233240;
+  border-right-color: #34495e;
+}
+
+.view-timetables-page.dark .view-options h3 {
+  border-bottom-color: #3498db;
+  color: #ecf0f1;
+}
+
+.view-timetables-page.dark .view-type-selector button {
+  background-color: #34495e;
+  border-color: #3498db;
+  color: #ecf0f1;
+}
+
+.view-timetables-page.dark .view-type-selector button.active {
+  background-color: #3498db;
+  color: white;
+}
+
+.view-timetables-page.dark .timetable-item {
+  background-color: #34495e;
+  color: #ecf0f1;
+}
+
+.view-timetables-page.dark .timetable-item:hover {
+  background-color: #3498db;
+}
+
+.view-timetables-page.dark .timetable-item.selected {
+  background-color: #2ecc71; /* Keeping the green selection */
+  color: white;
+}
+
+.view-timetables-page.dark .timetable-content {
+  background-color: #233240;
+}
+
+.view-timetables-page.dark .selected-timetable-container {
+  background-color: #1c1c1c;
+  color: #ecf0f1;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+}
+
+.view-timetables-page.dark .timetable {
+  color: #ecf0f1;
+}
+
+.view-timetables-page.dark .timetable thead {
+  background-color: #3498db;
+  color: white;
+}
+
+.view-timetables-page.dark .timetable th,
+.view-timetables-page.dark .timetable td {
+  border-color: #455a6f;
+}
+
+.view-timetables-page.dark .timetable .time-slot {
+  background-color: #2c3e50;
+  color: #ecf0f1;
+}
+
+.view-timetables-page.dark .timetable .special-row {
+  background-color: #233240;
+}
+
+.view-timetables-page.dark .timetable .break-slot {
+  background-color: #34495e;
+  color: #ecf0f1;
+}
+
+.view-timetables-page.dark .timetable .filled-slot {
+  background-color: #13181c;
+  color: white;
+}
+
+.view-timetables-page.dark .timetable .empty-slot {
+  background-color: #233240;
+  color: #7f8c8d;
+}
+
+.view-timetables-page.dark .loading,
+.view-timetables-page.dark .error,
+.view-timetables-page.dark .placeholder {
+  color: #ecf0f1;
+}
+.timetable-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.download-btn {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.download-btn:hover {
+  background-color: #2980b9;
+}
+
+/* Dark mode styles for download button */
+.view-timetables-page.dark .download-btn {
+  background-color: #4a9eff;
+  color: white;
+}
+
+.view-timetables-page.dark .download-btn:hover {
+  background-color: #3a8fdf;
 }
