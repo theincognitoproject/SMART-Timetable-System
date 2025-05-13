@@ -233,13 +233,15 @@
   flex-direction: column;
   align-items: center;
   position: relative;
-  margin-top: 20px;
+  margin-top: -5px;
 }
 
 /* Create Department Button */
 .create-dept {
+  width: 80%;  /* Make button width same as container */
   margin: 0 auto; /* Center the button */
-  margin-bottom: 60px; /* Space between buttons */
+  margin-bottom: 100px; /* Keep existing spacing */
+  display: block; /* Ensure it takes full width */
 }
 
 /* Generate Button */
@@ -364,4 +366,125 @@
     padding: 10px 20px;
     font-size: 14px;
   }
+}
+
+/* Add these styles to your existing CreateTimetable.css */
+
+.departments-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.departments-table th,
+.departments-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .departments-table th,
+.dark .departments-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.light .departments-table th,
+.light .departments-table td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.departments-table th {
+  font-weight: bold;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark .departments-table th {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.light .departments-table th {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.departments-table tr:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.view-table-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+}
+
+.dark .view-table-button {
+  color: #dad7cf;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.light .view-table-button {
+  color: #050b15;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.view-table-button:hover {
+  transform: scale(1.1);
+}
+
+.dark .view-table-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.light .view-table-button:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.view-table-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.department-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.loading-indicator {
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+  color: #888;
+}
+
+.dark .loading-indicator {
+  color: #aaa;
+}
+
+.button-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.generate:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

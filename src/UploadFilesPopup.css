@@ -1,0 +1,327 @@
+.upload-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1100;
+}
+
+.upload-popup-content {
+  background: #fff;
+  padding: 30px;
+  border-radius: 12px;
+  position: relative;
+  width: 800px;
+  min-height: 500px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.upload-popup-content.dark {
+  background: #1e1e1e;
+  color: #dad7cf;
+}
+
+.close-button {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease;
+}
+
+.close-button:hover {
+  color: #000;
+}
+
+.upload-popup-title {
+  margin: 0 0 40px 0;
+  font-size: 24px;
+  color: #333;
+  text-align: center;
+}
+
+.dark .upload-popup-title {
+  color: #dad7cf;
+}
+
+.upload-boxes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  margin-bottom: 40px;
+}
+
+.upload-boxes-row {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+}
+
+.upload-box-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.upload-box {
+  width: 120px;
+  height: 120px;
+  border: 2px dashed #666;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.upload-box.uploaded {
+  border-style: solid;
+  border-color: #4CAF50;
+  background-color: rgba(76, 175, 80, 0.1);
+}
+
+.upload-box:hover {
+  border-color: #4CAF50;
+  background-color: rgba(76, 175, 80, 0.1);
+}
+
+.plus-sign {
+  font-size: 40px;
+  color: #666;
+}
+
+.dark .plus-sign {
+  color: #dad7cf;
+}
+
+.tick-sign {
+  font-size: 40px;
+  color: #4CAF50;
+}
+
+.remove-file {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ff4444;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  transition: all 0.3s ease;
+}
+
+.remove-file:hover {
+  background: #ff0000;
+  transform: scale(1.1);
+}
+
+.box-label {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+}
+
+.dark .box-label {
+  color: #dad7cf;
+}
+
+.file-name {
+  font-size: 12px;
+  color: #666;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 5px;
+}
+
+.dark .file-name {
+  color: #dad7cf;
+}
+
+.error-message {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(255, 82, 82, 0.1);
+  border: 1px solid #ff5252;
+  border-radius: 8px;
+  padding: 12px 20px;
+  color: #ff5252;
+  font-size: 14px;
+  text-align: center;
+  animation: fadeIn 0.3s ease;
+  max-width: 80%;
+}
+
+.dark .error-message {
+  background-color: rgba(255, 82, 82, 0.2);
+  color: #ff8080;
+}
+
+.create-button {
+  position: absolute;
+  bottom: 15px;
+  right: 15px;
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s ease;
+}
+
+.create-button:hover {
+  background-color: #45a049;
+}
+
+.dark .close-button {
+  color: #dad7cf;
+}
+
+.dark .close-button:hover {
+  color: #fff;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 850px) {
+  .upload-popup-content {
+    width: 90%;
+    padding: 20px;
+  }
+
+  .upload-boxes-row {
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .upload-box {
+    width: 100px;
+    height: 100px;
+  }
+
+  .plus-sign,
+  .tick-sign {
+    font-size: 30px;
+  }
+
+  .box-label {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .upload-popup-content {
+    padding: 15px;
+  }
+
+  .upload-boxes-container {
+    gap: 20px;
+  }
+
+  .upload-box {
+    width: 80px;
+    height: 80px;
+  }
+
+  .plus-sign,
+  .tick-sign {
+    font-size: 24px;
+  }
+
+  .box-label {
+    font-size: 11px;
+  }
+
+  .create-button {
+    bottom: 15px;
+    right: 15px;
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+}
+
+/* Add these styles to your existing UploadFilesPopup.css */
+
+.processing-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+.loading-spinner {
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 5px solid #4CAF50;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+.dark .loading-spinner {
+  border-color: rgba(5, 11, 21, 0.3);
+  border-top-color: #4CAF50;
+}
+
+.processing-status {
+  font-size: 18px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.create-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.dark .create-button:disabled {
+  background-color: #555555;
+}
