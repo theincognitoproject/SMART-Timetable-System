@@ -301,3 +301,155 @@
     max-height: 400px;
     overflow-y: auto;
   }
+/* Section Configuration Styles */
+.section-config {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto 30px;
+  padding: 20px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.dark .section-config {
+  background: rgba(218, 215, 207, 0.05);
+  box-shadow: 0 0 15px rgba(218, 215, 207, 0.1);
+}
+
+.light .section-config {
+  background: rgba(5, 11, 21, 0.05);
+  box-shadow: 0 0 15px rgba(5, 11, 21, 0.1);
+}
+
+.section-config h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  font-weight: 400;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.section-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.year-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.year-section label {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.input-with-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+}
+
+.control-button {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dark .control-button {
+  background: #dad7cf;
+  color: #050b15;
+  box-shadow: 0 0 15px rgba(218, 215, 207, 0.1);
+}
+
+.light .control-button {
+  background: #050b15;
+  color: #dad7cf;
+  box-shadow: 0 0 15px rgba(5, 11, 21, 0.1);
+}
+
+.control-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.control-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.year-section input {
+  width: 60px;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.dark .year-section input {
+  background: #dad7cf;
+  color: #050b15;
+  box-shadow: 0 0 15px rgba(218, 215, 207, 0.1);
+}
+
+.light .year-section input {
+  background: #050b15;
+  color: #dad7cf;
+  box-shadow: 0 0 15px rgba(5, 11, 21, 0.1);
+}
+
+.section-preview {
+  text-align: center;
+  font-size: 0.9rem;
+  opacity: 0.8;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.dark .section-preview {
+  background: rgba(218, 215, 207, 0.05);
+}
+
+.light .section-preview {
+  background: rgba(5, 11, 21, 0.05);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .section-config {
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+
+  .section-config h2 {
+    font-size: 22px;
+  }
+
+  .year-section label {
+    font-size: 14px;
+  }
+
+  .control-button, 
+  .year-section input {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+
+  .section-preview {
+    font-size: 0.8rem;
+  }
+}

@@ -11,6 +11,13 @@ const GenerateTimetable = ({ onBack, isDarkMode, toggleTheme }) => {
     cdc: null
   });
 
+  // State for section configuration
+  const [sectionCounts, setSectionCounts] = useState({
+    1: 16, // Default values
+    2: 13,
+    3: 12
+  });
+
   // State for upload status and validation
   const [uploadStatus, setUploadStatus] = useState({
     faculty: false,
@@ -96,39 +103,47 @@ const GenerateTimetable = ({ onBack, isDarkMode, toggleTheme }) => {
 
     setIsGenerateButtonEnabled(allFilesUploaded);
   };
-
   // Handle timetable generation
   const handleGenerateTimetable = async () => {
-    // Validate all files are uploaded
-    const allFilesUploaded = Object.values(files).every(file => file !== null);
-    
-    if (!allFilesUploaded) {
-      alert('Please upload all required files');
-      return;
-    }
+  // Validate all files are uploaded
+  const allFilesUploaded = Object.values(files).every(file => file !== null);
   
-    // Prepare form data for upload
-    const formData = new FormData();
-    Object.keys(files).forEach(fileType => {
-      formData.append(fileType, files[fileType]);
+  if (!allFilesUploaded) {
+    alert('Please upload all required files');
+    return;
+  }
+
+  // Convert section counts to letter arrays
+  const sectionConfig = Object.entries(sectionCounts).reduce((acc, [year, count]) => {
+    acc[year] = Array.from({ length: count }, (_, i) => 
+      String.fromCharCode(65 + i)
+    );
+    return acc;
+  }, {});
+
+  // Prepare form data for upload
+  const formData = new FormData();
+  Object.keys(files).forEach(fileType => {
+    formData.append(fileType, files[fileType]);
+  });
+  
+  // Add section configuration to formData
+  formData.append('sectionConfig', JSON.stringify(sectionConfig));
+  
+  try {
+    setGenerationStatus('Generating timetables...');
+
+    const response = await axios.post(`${BACKEND_URL}/generate_timetable`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        setGenerationStatus(`Uploading: ${percentCompleted}%`);
+      },
+      timeout: 300000 // 5 minutes timeout
     });
-  
-    try {
-      // Set generation status
-      setGenerationStatus('Generating timetables...');
-  
-      // Backend API call
-      const response = await axios.post(`${BACKEND_URL}/generate_timetable`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setGenerationStatus(`Uploading: ${percentCompleted}%`);
-        },
-        timeout: 300000 // 5 minutes timeout
-      });
-  
+
       // Handle successful generation
       if (response.data.status === 'success') {
         setGenerationStatus('Timetables generated successfully!');
@@ -202,7 +217,63 @@ const GenerateTimetable = ({ onBack, isDarkMode, toggleTheme }) => {
     </div>
   );
 
-  // Render validation results
+  // Render section configuration
+  const renderSectionConfig = () => (
+    <div className="section-config">
+      <h2>Configure Sections</h2>
+      <div className="section-inputs">
+        {[1, 2, 3].map(year => (
+          <div key={year} className="year-section">
+            <label htmlFor={`year-${year}-sections`}>
+              Year {year} Sections
+            </label>
+            <div className="input-with-controls">
+              <button 
+                className="control-button"
+                onClick={() => setSectionCounts(prev => ({
+                  ...prev,
+                  [year]: Math.max(1, prev[year] - 1)
+                }))}
+                disabled={sectionCounts[year] <= 1}
+              >
+                -
+              </button>
+              <input
+                type="number"
+                id={`year-${year}-sections`}
+                min="1"
+                max="26"
+                value={sectionCounts[year]}
+                onChange={(e) => {
+                  const value = Math.min(26, Math.max(1, parseInt(e.target.value) || 1));
+                  setSectionCounts(prev => ({
+                    ...prev,
+                    [year]: value
+                  }));
+                }}
+              />
+              <button 
+                className="control-button"
+                onClick={() => setSectionCounts(prev => ({
+                  ...prev,
+                  [year]: Math.min(26, prev[year] + 1)
+                }))}
+                disabled={sectionCounts[year] >= 26}
+              >
+                +
+              </button>
+            </div>
+            <span className="section-preview">
+              Sections: {Array.from({ length: sectionCounts[year] }, (_, i) => 
+                String.fromCharCode(65 + i)
+              ).join(', ')}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+    // Render validation results
   const renderValidationResults = () => {
     if (!validationResults) return null;
 
@@ -307,6 +378,9 @@ const GenerateTimetable = ({ onBack, isDarkMode, toggleTheme }) => {
             {isTyping && <span className="cursor">|</span>}
           </h1>
         </div>
+
+        {/* Section Configuration */}
+        {renderSectionConfig()}
 
         {/* File Upload Section */}
         <div className="file-upload-section">
