@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 import subprocess
 import json
 from datetime import datetime
+import bcrypt
+from pydantic import BaseModel, Field, field_validator
 
 # Load environment variables
 load_dotenv()
@@ -71,14 +73,50 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",  # React default
+        "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "*"  # Be cautious with this in production
+        "*"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Pydantic Models
+class LoginRequest(BaseModel):
+    username: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+
+class ChangePasswordRequest(BaseModel):
+    username: str = Field(..., min_length=1)
+    oldPassword: str = Field(..., min_length=1)
+    newPassword: str = Field(
+        ...,
+        min_length=8,
+        description="Password must contain at least 8 characters, including uppercase, lowercase, numbers, and special characters"
+    )
+
+    @field_validator('newPassword')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        
+        if not any(c.islower() for c in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        
+        if not any(c.isupper() for c in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        
+        if not any(c.isdigit() for c in v):
+            raise ValueError('Password must contain at least one number')
+        
+        if not any(c in '@$!%*?&' for c in v):
+            raise ValueError('Password must contain at least one special character (@$!%*?&)')
+        
+        return v
+
+# Database Connection Functions
 def get_db_connection():
     """
     Establish database connection
@@ -99,19 +137,68 @@ def get_db_connection():
             detail=f"Database connection error: {str(err)}"
         )
 
+def get_login_db_connection():
+    """
+    Establish connection to login database
+    """
+    try:
+        conn = mysql.connector.connect(
+            host=os.getenv('DB_HOST'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            database='login_details',
+            port=int(os.getenv('DB_PORT')),
+            ssl_disabled=True
+        )
+        return conn
+    except MySQLError as err:
+        logger.error(f"Login database connection error: {err}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database connection error: {str(err)}"
+        )
+# Helper Functions
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verify password against hashed version
+    """
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
+    except Exception as e:
+        logger.error(f"Password verification error: {e}")
+        return False
+
+def hash_password(password: str) -> str:
+    """
+    Hash password using bcrypt
+    """
+    try:
+        return bcrypt.hashpw(
+            password.encode('utf-8'),
+            bcrypt.gensalt()
+        ).decode('utf-8')
+    except Exception as e:
+        logger.error(f"Password hashing error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Password hashing failed"
+        )
+
 def find_latest_timetable_schema(cursor):
     """
     Find the most recent timetable schema
     """
     try:
-        # Directly show databases
         cursor.execute("SHOW DATABASES")
         databases = cursor.fetchall()
         logger.info(f"Available databases: {databases}")
 
-        # Find databases starting with 'timetable_'
         timetable_schemas = [
-            db['Database'] for db in databases if str(db['Database']).startswith('timetable_')
+            db['Database'] for db in databases 
+            if str(db['Database']).startswith('timetable_')
         ]
 
         if not timetable_schemas:
@@ -120,7 +207,6 @@ def find_latest_timetable_schema(cursor):
                 detail="No timetable schema found"
             )
 
-        # Sort and get the most recent schema
         latest_schema = sorted(timetable_schemas, reverse=True)[0]
         logger.info(f"Selected schema: {latest_schema}")
 
@@ -138,19 +224,16 @@ def rearrange_timetable_data(timetable_data):
     Rearrange timetable data to match predefined slots and days
     """
     try:
-        # Create a new ordered timetable
         ordered_timetable = {}
         
         for day in PREDEFINED_DAYS:
             ordered_timetable[day] = {}
             
             for slot in PREDEFINED_SLOTS:
-                # If slot is a break or lunch, keep it as is
                 if slot in ["BREAK", "LUNCH"]:
                     ordered_timetable[day][slot] = slot
                     continue
                 
-                # Try to find the corresponding slot in the original data
                 original_slot_data = timetable_data.get(day, {}).get(slot)
                 ordered_timetable[day][slot] = original_slot_data or None
 
@@ -178,6 +261,120 @@ def safe_json_parse(json_data):
         logger.error(f"JSON decoding error for data: {json_data}")
         return {}
 
+# Authentication Endpoints
+@app.post("/api/login")
+async def login(login_data: LoginRequest):
+    """
+    Handle user login
+    """
+    conn = None
+    try:
+        logger.info(f"Login attempt for user: {login_data.username}")
+        
+        conn = get_login_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute(
+            "SELECT * FROM users WHERE username = %s",
+            (login_data.username,)
+        )
+        user = cursor.fetchone()
+
+        if not user:
+            logger.warning(f"Login failed: User not found - {login_data.username}")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid credentials"
+            )
+
+        if not verify_password(login_data.password, user['password']):
+            logger.warning(f"Login failed: Invalid password - {login_data.username}")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid credentials"
+            )
+
+        logger.info(f"Successful login: {login_data.username}")
+        return {
+            "success": True,
+            "message": "Login successful",
+            "username": user['username']
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Login error: {str(e)}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail="Server error"
+        )
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.post("/api/change-password")
+async def change_password(change_pwd_data: ChangePasswordRequest):
+    """
+    Handle password change
+    """
+    conn = None
+    try:
+        logger.info(f"Password change attempt for user: {change_pwd_data.username}")
+        
+        conn = get_login_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute(
+            "SELECT * FROM users WHERE username = %s",
+            (change_pwd_data.username,)
+        )
+        user = cursor.fetchone()
+
+        if not user:
+            logger.warning(f"Password change failed: User not found - {change_pwd_data.username}")
+            raise HTTPException(
+                status_code=401,
+                detail="User not found"
+            )
+
+        if not verify_password(change_pwd_data.oldPassword, user['password']):
+            logger.warning(f"Password change failed: Invalid current password - {change_pwd_data.username}")
+            raise HTTPException(
+                status_code=401,
+                detail="Current password is incorrect"
+            )
+
+        hashed_new_password = hash_password(change_pwd_data.newPassword)
+        
+        cursor.execute(
+            "UPDATE users SET password = %s WHERE username = %s",
+            (hashed_new_password, change_pwd_data.username)
+        )
+        conn.commit()
+
+        logger.info(f"Password changed successfully: {change_pwd_data.username}")
+        return {
+            "success": True,
+            "message": "Password updated successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Password change error: {str(e)}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail="Server error"
+        )
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+# Timetable Management Endpoints
 @app.get("/api/timetables/classes")
 def get_class_timetables():
     """
@@ -185,18 +382,13 @@ def get_class_timetables():
     """
     conn = None
     try:
-        # Establish database connection
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Find the latest schema
         latest_schema = find_latest_timetable_schema(cursor)
-        
-        # Switch to the specific database
         conn.database = latest_schema
         cursor = conn.cursor(dictionary=True)
         
-        # Fetch class timetables
         cursor.execute("""
             SELECT 
                 year, 
@@ -210,7 +402,6 @@ def get_class_timetables():
         
         class_timetables = cursor.fetchall()
         
-        # Transform results
         formatted_timetables = [
             {
                 "year": row['year'],
@@ -239,18 +430,13 @@ def get_teacher_timetables():
     """
     conn = None
     try:
-        # Establish database connection
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Find the latest schema
         latest_schema = find_latest_timetable_schema(cursor)
-        
-        # Switch to the specific database
         conn.database = latest_schema
         cursor = conn.cursor(dictionary=True)
         
-        # Fetch teacher timetables
         cursor.execute("""
             SELECT 
                 employee_id, 
@@ -264,7 +450,6 @@ def get_teacher_timetables():
         
         teacher_timetables = cursor.fetchall()
         
-        # Transform results
         formatted_timetables = [
             {
                 "employee_id": row['employee_id'],
@@ -293,18 +478,13 @@ def get_venue_timetables():
     """
     conn = None
     try:
-        # Establish database connection
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Find the latest schema
         latest_schema = find_latest_timetable_schema(cursor)
-        
-        # Switch to the specific database
         conn.database = latest_schema
         cursor = conn.cursor(dictionary=True)
         
-        # Fetch venue timetables
         cursor.execute("""
             SELECT 
                 venue_id, 
@@ -318,7 +498,6 @@ def get_venue_timetables():
         
         venue_timetables = cursor.fetchall()
         
-        # Transform results
         formatted_timetables = [
             {
                 "venue_id": row['venue_id'],
@@ -339,58 +518,8 @@ def get_venue_timetables():
     finally:
         if conn:
             conn.close()
-@app.get("/api/schemas")
-async def get_schemas():
-    """
-    Retrieve all available database schemas
-    """
-    try:
-        # Establish database connection
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        
-        # Query to get all schemas
-        cursor.execute('SHOW DATABASES')
-        databases = cursor.fetchall()
-        
-        # Log available databases
-        logger.info(f"Available databases: {databases}")
-        
-        # Filter out system schemas
-        system_schemas = [
-            'defaultdb', 'information_schema', 
-            'mysql', 'performance_schema', 'sys'
-        ]
-        
-        # Filter schemas, excluding system schemas and those with 'timetable' prefix
-        filtered_schemas = [
-            db['Database'] for db in databases 
-            if db['Database'].lower() not in system_schemas 
-            and not db['Database'].lower().startswith('timetable')
-        ]
-        
-        # Close cursor and connection
-        cursor.close()
-        conn.close()
-        
-        return {
-            "success": True,
-            "schemas": filtered_schemas
-        }
-    
-    except mysql.connector.Error as err:
-        logger.error(f"Database error: {err}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Database connection error: {str(err)}"
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Unexpected error: {str(e)}"
-        )
 
+# File Processing Endpoints
 @app.post("/api/process-year-files")
 async def process_year_files(
     department_name: str = Form(...),
@@ -400,26 +529,21 @@ async def process_year_files(
     Process year files for a specific department
     """
     try:
-        # Ensure uploads directory exists
         upload_dir = "uploads"
         os.makedirs(upload_dir, exist_ok=True)
         
-        # Generate unique filenames and save files
         file_paths = []
         for file in files:
-            # Generate unique filename
             import uuid
             unique_filename = f"{uuid.uuid4()}_{file.filename}"
             file_path = os.path.join(upload_dir, unique_filename)
             
-            # Save file
             with open(file_path, "wb") as buffer:
                 content = await file.read()
                 buffer.write(content)
             
             file_paths.append(file_path)
         
-        # Run Python script
         process = subprocess.Popen([
             'python', 
             'process_year_files.py',
@@ -431,17 +555,14 @@ async def process_year_files(
             text=True
         )
         
-        # Capture output
         stdout, stderr = process.communicate()
         
-        # Clean up files
         for file_path in file_paths:
             try:
                 os.unlink(file_path)
             except Exception as e:
-                print(f"Error deleting file {file_path}: {e}")
+                logger.error(f"Error deleting file {file_path}: {e}")
         
-        # Check process result
         if process.returncode == 0:
             return {
                 "success": True,
@@ -463,6 +584,7 @@ async def process_year_files(
             }
     
     except Exception as e:
+        logger.error(f"Error processing year files: {str(e)}")
         raise HTTPException(
             status_code=500, 
             detail=f"Server error: {str(e)}"
@@ -477,35 +599,28 @@ async def process_faculty_files(
     Process faculty files for a specific department
     """
     try:
-        # Create uploads directory
         upload_dir = "uploads"
         os.makedirs(upload_dir, exist_ok=True)
         
-        # Use original filenames (sanitized)
         faculty_list_filename = re.sub(r'\W+', '_', faculty_list.filename)
         faculty_pref_filename = re.sub(r'\W+', '_', faculty_preferences.filename)
         
-        # Full paths for saving files
         faculty_list_path = os.path.join(upload_dir, faculty_list_filename)
         faculty_pref_path = os.path.join(upload_dir, faculty_pref_filename)
         
-        # Logging file details
         logger.info(f"Saving faculty list file: {faculty_list_path}")
         logger.info(f"Saving faculty preferences file: {faculty_pref_path}")
         
-        # Save faculty list file
         with open(faculty_list_path, "wb") as buffer:
             content = await faculty_list.read()
             buffer.write(content)
             logger.info(f"Faculty list file saved. Size: {len(content)} bytes")
         
-        # Save faculty preferences file
         with open(faculty_pref_path, "wb") as buffer:
             content = await faculty_preferences.read()
             buffer.write(content)
             logger.info(f"Faculty preferences file saved. Size: {len(content)} bytes")
         
-        # Run Python script
         process = subprocess.Popen([
             'python', 
             'process_faculty_files.py',
@@ -517,7 +632,7 @@ async def process_faculty_files(
             stderr=subprocess.PIPE, 
             text=True
         )
-        # Capture output with timeout
+
         try:
             stdout, stderr = process.communicate(timeout=600)  # 10-minute timeout
         except subprocess.TimeoutExpired:
@@ -533,18 +648,15 @@ async def process_faculty_files(
                 }
             }
         
-        # Log raw outputs for debugging
         logger.info(f"STDOUT: {stdout}")
         logger.error(f"STDERR: {stderr}")
         
-        # Clean up files
         try:
             os.unlink(faculty_list_path)
             os.unlink(faculty_pref_path)
         except Exception as cleanup_err:
             logger.error(f"Error during file cleanup: {cleanup_err}")
         
-        # Check process result
         if process.returncode == 0:
             return {
                 "success": True,
@@ -566,11 +678,9 @@ async def process_faculty_files(
             }
     
     except Exception as e:
-        # Comprehensive error logging
         logger.error(f"Server error during faculty files processing: {e}")
         logger.error(traceback.format_exc())
         
-        # Clean up files in case of error
         try:
             if 'faculty_list_path' in locals():
                 os.unlink(faculty_list_path)
@@ -583,39 +693,145 @@ async def process_faculty_files(
             status_code=500, 
             detail=f"Server error: {str(e)}"
         )
-# Health Check Endpoint
-@app.get("/health")
-def health_check():
+
+@app.get("/api/schemas")
+async def get_schemas():
     """
-    Simple health check endpoint
+    Retrieve all available database schemas
     """
     try:
-        # Attempt database connection
         conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
-        # Find the latest schema
-        cursor = conn.cursor()
         cursor.execute('SHOW DATABASES')
         databases = cursor.fetchall()
         
+        logger.info(f"Available databases: {databases}")
+        
+        system_schemas = [
+            'defaultdb', 'information_schema', 
+            'mysql', 'performance_schema', 'sys', 'login_details'
+        ]
+        
+        filtered_schemas = [
+            db['Database'] for db in databases 
+            if db['Database'].lower() not in system_schemas 
+            and not db['Database'].lower().startswith('timetable')
+        ]
+        
+        cursor.close()
         conn.close()
+        
         return {
-            "status": "healthy", 
-            "database": "connected",
-            "current_time": datetime.now().isoformat(),
-            "predefined_slots": PREDEFINED_SLOTS,
-            "predefined_days": PREDEFINED_DAYS,
-            "available_schemas": [
-                db[0] for db in databases 
-                if not str(db[0]).lower().startswith(('information_schema', 'mysql', 'performance_schema', 'sys'))
-            ]
+            "success": True,
+            "schemas": filtered_schemas
         }
+    
+    except mysql.connector.Error as err:
+        logger.error(f"Database error: {err}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database connection error: {str(err)}"
+        )
     except Exception as e:
-        return {
-            "status": "unhealthy", 
-            "error": str(e)
-        }
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Unexpected error: {str(e)}"
+        )
 
+@app.get("/api/schema/{schema_name}/uniquesubjects")
+async def get_unique_subjects(
+    schema_name: str,
+    limit: Optional[int] = Query(default=1000, ge=1, le=5000),
+    offset: Optional[int] = Query(default=0, ge=0)
+):
+    """
+    Retrieve UniqueSubjects data from a specific schema
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute('SHOW DATABASES')
+        databases = cursor.fetchall()
+        available_schemas = [
+            db['Database'] for db in databases 
+            if db['Database'].lower() not in ['information_schema', 'mysql', 'performance_schema', 'sys', 'defaultdb', 'login_details']
+        ]
+        
+        matching_schemas = [
+            schema for schema in available_schemas 
+            if schema.lower() == schema_name.lower()
+        ]
+        
+        if not matching_schemas:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Schema '{schema_name}' not found."
+            )
+        
+        actual_schema = matching_schemas[0]
+        conn.database = actual_schema
+        cursor = conn.cursor(dictionary=True)
+        
+        possible_table_names = [
+            'UniqueSubjects',
+            'Unique_Subjects',
+            'uniquesubjects',
+            'unique_subjects',
+            'UniqueSubjects_UniqueSubjects',
+            'UniqueSubjects_UniqueSubjects_xlsx'
+        ]
+        
+        cursor.execute('SHOW TABLES')
+        tables = [table['Tables_in_' + actual_schema] for table in cursor.fetchall()]
+        
+        matching_tables = [
+            table for table in tables 
+            for possible_name in possible_table_names 
+            if table.lower() == possible_name.lower() or possible_name.lower() in table.lower()
+        ]
+        
+        if not matching_tables:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"UniqueSubjects table not found in schema '{actual_schema}'. Available tables: {tables}"
+            )
+        
+        table_name = matching_tables[0]
+        
+        cursor.execute(f'SELECT COUNT(*) as total FROM `{table_name}`')
+        total_rows = cursor.fetchone()['total']
+        
+        cursor.execute(f'SELECT * FROM `{table_name}` LIMIT %s OFFSET %s', (limit, offset))
+        rows = cursor.fetchall()
+        
+        return {
+            "success": True,
+            "database": actual_schema,
+            "tableName": table_name,
+            "pagination": {
+                "total": total_rows,
+                "limit": limit,
+                "offset": offset,
+                "hasMore": offset + len(rows) < total_rows
+            },
+            "data": rows
+        }
+    
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error retrieving UniqueSubjects: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
+    finally:
+        if conn:
+            conn.close()
 @app.get("/api/schema/{schema_name}/sortedtable")
 async def get_sorted_table(
     schema_name: str,
@@ -626,24 +842,20 @@ async def get_sorted_table(
 ):
     """
     Retrieve SortedTable data
-        """
+    """
     conn = None
     try:
-        # Establish database connection
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Query to get all schemas
         cursor.execute('SHOW DATABASES')
         databases = cursor.fetchall()
         
-        # Convert to list of database names
         available_schemas = [
             db['Database'] for db in databases 
-            if db['Database'].lower() not in ['information_schema', 'mysql', 'performance_schema', 'sys', 'defaultdb']
+            if db['Database'].lower() not in ['information_schema', 'mysql', 'performance_schema', 'sys', 'defaultdb', 'login_details']
         ]
         
-        # Check if schema exists (case-insensitive)
         matching_schemas = [
             schema for schema in available_schemas 
             if schema.lower() == schema_name.lower()
@@ -656,18 +868,13 @@ async def get_sorted_table(
                 headers={"X-Available-Schemas": json.dumps(available_schemas)}
             )
         
-        # Use the matched schema (preserving original case)
         actual_schema = matching_schemas[0]
-        
-        # Switch to the specific database
         conn.database = actual_schema
         cursor = conn.cursor(dictionary=True)
         
-        # Check if table exists
         cursor.execute('SHOW TABLES')
         tables = [table['Tables_in_' + actual_schema] for table in cursor.fetchall()]
         
-        # Check for possible table variations
         possible_table_names = [
             'SortedTable_SortedTable_xlsx',
             'SortedTable_SortedTable', 
@@ -689,25 +896,19 @@ async def get_sorted_table(
                 headers={"X-Available-Tables": json.dumps(tables)}
             )
         
-        # Use the first matching table
         table_name = matching_tables[0]
         
-        # Get table columns
         cursor.execute(f'DESCRIBE `{table_name}`')
         columns = cursor.fetchall()
         
-        # Determine sort column
         sort_column = sort_by or columns[0]['Field']
         
-        # Validate sort column exists
         if not any(col['Field'].lower() == sort_column.lower() for col in columns):
             sort_column = columns[0]['Field']
         
-        # Count total rows
         cursor.execute(f'SELECT COUNT(*) as total FROM `{table_name}`')
         total_rows = cursor.fetchone()['total']
         
-        # Construct dynamic query
         query = f"""
         SELECT * FROM `{table_name}`
         ORDER BY `{sort_column}` {order}
@@ -740,229 +941,46 @@ async def get_sorted_table(
     
     except HTTPException as he:
         raise he
-    
     except Exception as e:
         logger.error(f"Error retrieving SortedTable: {e}")
         raise HTTPException(
             status_code=500, 
             detail=f"Database error: {str(e)}"
         )
-    
     finally:
         if conn:
             conn.close()
 
-@app.get("/api/schema/{schema_name}/sortedtableformatted")
-async def get_sorted_table_formatted(
-    schema_name: str,
-    limit: Optional[int] = Query(default=1000, ge=1, le=5000),
-    offset: Optional[int] = Query(default=0, ge=0)
-):
+@app.get("/health")
+def health_check():
     """
-    Retrieve SortedTableFormatted data from a specific schema
+    Simple health check endpoint
     """
-    conn = None
     try:
-        # Establish database connection
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        
-        # Verify schema exists
+        cursor = conn.cursor()
         cursor.execute('SHOW DATABASES')
         databases = cursor.fetchall()
-        available_schemas = [
-            db['Database'] for db in databases 
-            if db['Database'].lower() not in ['information_schema', 'mysql', 'performance_schema', 'sys', 'defaultdb']
-        ]
         
-        matching_schemas = [
-            schema for schema in available_schemas 
-            if schema.lower() == schema_name.lower()
-        ]
-        
-        if not matching_schemas:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"Schema '{schema_name}' not found."
-            )
-        
-        # Use the matched schema
-        actual_schema = matching_schemas[0]
-        
-        # Switch to the specific database
-        conn.database = actual_schema
-        cursor = conn.cursor(dictionary=True)
-        
-        # Check if the SortedTableFormatted table exists (check variations of the name)
-        cursor.execute('SHOW TABLES')
-        tables = [table['Tables_in_' + actual_schema] for table in cursor.fetchall()]
-        
-        # Look for variations of SortedTableFormatted
-        possible_table_names = [
-            'SortedTableFormatted',
-            'SortedTable_Formatted',
-            'sortedtableformatted',
-            'Formatted_SortedTable',
-            'SortedTableFormatted_SortedTableFormatted',
-            'SortedTableFormatted_SortedTableFormatted_xlsx'
-        ]
-        
-        matching_tables = [
-            table for table in tables 
-            for possible_name in possible_table_names 
-            if table.lower() == possible_name.lower() or possible_name.lower() in table.lower()
-        ]
-        
-        if not matching_tables:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"SortedTableFormatted table not found in schema '{actual_schema}'. Available tables: {tables}"
-            )
-        
-        # Use the first matching table
-        table_name = matching_tables[0]
-        
-        # Count total rows
-        cursor.execute(f'SELECT COUNT(*) as total FROM `{table_name}`')
-        total_rows = cursor.fetchone()['total']
-        
-        # Fetch data
-        cursor.execute(f'SELECT * FROM `{table_name}` LIMIT %s OFFSET %s', (limit, offset))
-        rows = cursor.fetchall()
-        
+        conn.close()
         return {
-            "success": True,
-            "database": actual_schema,
-            "tableName": table_name,
-            "pagination": {
-                "total": total_rows,
-                "limit": limit,
-                "offset": offset,
-                "hasMore": offset + len(rows) < total_rows
-            },
-            "data": rows
+            "status": "healthy", 
+            "database": "connected",
+            "current_time": datetime.now().isoformat(),
+            "predefined_slots": PREDEFINED_SLOTS,
+            "predefined_days": PREDEFINED_DAYS,
+            "available_schemas": [
+                db[0] for db in databases 
+                if not str(db[0]).lower().startswith(('information_schema', 'mysql', 'performance_schema', 'sys', 'login_details'))
+            ]
         }
-    
-    except HTTPException as he:
-        raise he
-    
     except Exception as e:
-        logger.error(f"Error retrieving SortedTableFormatted: {e}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Database error: {str(e)}"
-        )
-    
-    finally:
-        if conn:
-            conn.close()
-
-@app.get("/api/schema/{schema_name}/uniquesubjects")
-async def get_unique_subjects(
-    schema_name: str,
-    limit: Optional[int] = Query(default=1000, ge=1, le=5000),
-    offset: Optional[int] = Query(default=0, ge=0)
-):
-    """
-    Retrieve UniqueSubjects data from a specific schema
-    """
-    conn = None
-    try:
-        # Establish database connection
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        
-        # Verify schema exists
-        cursor.execute('SHOW DATABASES')
-        databases = cursor.fetchall()
-        available_schemas = [
-            db['Database'] for db in databases 
-            if db['Database'].lower() not in ['information_schema', 'mysql', 'performance_schema', 'sys', 'defaultdb']
-        ]
-        
-        matching_schemas = [
-            schema for schema in available_schemas 
-            if schema.lower() == schema_name.lower()
-        ]
-        
-        if not matching_schemas:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"Schema '{schema_name}' not found."
-            )
-        
-        # Use the matched schema
-        actual_schema = matching_schemas[0]
-        
-        # Switch to the specific database
-        conn.database = actual_schema
-        cursor = conn.cursor(dictionary=True)
-        
-        # Check if the UniqueSubjects table exists (check variations of the name)
-        cursor.execute('SHOW TABLES')
-        tables = [table['Tables_in_' + actual_schema] for table in cursor.fetchall()]
-        
-        # Look for variations of UniqueSubjects
-        possible_table_names = [
-            'UniqueSubjects',
-            'Unique_Subjects',
-            'uniquesubjects',
-            'unique_subjects',
-            'UniqueSubjects_UniqueSubjects',
-            'UniqueSubjects_UniqueSubjects_xlsx'
-        ]
-        
-        matching_tables = [
-            table for table in tables 
-            for possible_name in possible_table_names 
-            if table.lower() == possible_name.lower() or possible_name.lower() in table.lower()
-        ]
-        
-        if not matching_tables:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"UniqueSubjects table not found in schema '{actual_schema}'. Available tables: {tables}"
-            )
-        
-        # Use the first matching table
-        table_name = matching_tables[0]
-        
-        # Count total rows
-        cursor.execute(f'SELECT COUNT(*) as total FROM `{table_name}`')
-        total_rows = cursor.fetchone()['total']
-        
-        # Fetch data
-        cursor.execute(f'SELECT * FROM `{table_name}` LIMIT %s OFFSET %s', (limit, offset))
-        rows = cursor.fetchall()
-        
         return {
-            "success": True,
-            "database": actual_schema,
-            "tableName": table_name,
-            "pagination": {
-                "total": total_rows,
-                "limit": limit,
-                "offset": offset,
-                "hasMore": offset + len(rows) < total_rows
-            },
-            "data": rows
+            "status": "unhealthy", 
+            "error": str(e)
         }
-    
-    except HTTPException as he:
-        raise he
-    
-    except Exception as e:
-        logger.error(f"Error retrieving UniqueSubjects: {e}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Database error: {str(e)}"
-        )
-    
-    finally:
-        if conn:
-            conn.close()
 
-# Global Exception Handler
+# Error Handlers
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """
@@ -974,7 +992,7 @@ async def global_exception_handler(request, exc):
         detail="Internal server error"
     )
 
-# Startup Event Handler
+# Startup Event
 @app.on_event("startup")
 async def startup_event():
     """
@@ -984,11 +1002,10 @@ async def startup_event():
     logger.info(f"Predefined Slots: {PREDEFINED_SLOTS}")
     logger.info(f"Predefined Days: {PREDEFINED_DAYS}")
 
-    # Create uploads directory if it doesn't exist
     uploads_dir = "uploads"
     os.makedirs(uploads_dir, exist_ok=True)
 
-# Shutdown Event Handler
+# Shutdown Event
 @app.on_event("shutdown")
 async def shutdown_event():
     """
@@ -996,7 +1013,6 @@ async def shutdown_event():
     """
     logger.info("Shutting down Timetable Allocation API")
     
-    # Clean up uploads directory
     uploads_dir = "uploads"
     try:
         for filename in os.listdir(uploads_dir):
@@ -1009,12 +1025,10 @@ async def shutdown_event():
     except Exception as e:
         logger.error(f"Error during shutdown cleanup: {e}")
 
-# Run the server (if script is run directly)
+# Main Execution
 if __name__ == "__main__":
     import uvicorn
     
-    # Configure logging for uvicorn
-    import logging
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -1024,7 +1038,6 @@ if __name__ == "__main__":
         ]
     )
     
-    # Run the server
     uvicorn.run(
         "main:app", 
         host="0.0.0.0", 
