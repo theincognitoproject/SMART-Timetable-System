@@ -740,98 +740,6 @@ async def get_schemas():
             detail=f"Unexpected error: {str(e)}"
         )
 
-@app.get("/api/schema/{schema_name}/uniquesubjects")
-async def get_unique_subjects(
-    schema_name: str,
-    limit: Optional[int] = Query(default=1000, ge=1, le=5000),
-    offset: Optional[int] = Query(default=0, ge=0)
-):
-    """
-    Retrieve UniqueSubjects data from a specific schema
-    """
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        
-        cursor.execute('SHOW DATABASES')
-        databases = cursor.fetchall()
-        available_schemas = [
-            db['Database'] for db in databases 
-            if db['Database'].lower() not in ['information_schema', 'mysql', 'performance_schema', 'sys', 'defaultdb', 'login_details']
-        ]
-        
-        matching_schemas = [
-            schema for schema in available_schemas 
-            if schema.lower() == schema_name.lower()
-        ]
-        
-        if not matching_schemas:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"Schema '{schema_name}' not found."
-            )
-        
-        actual_schema = matching_schemas[0]
-        conn.database = actual_schema
-        cursor = conn.cursor(dictionary=True)
-        
-        possible_table_names = [
-            'UniqueSubjects',
-            'Unique_Subjects',
-            'uniquesubjects',
-            'unique_subjects',
-            'UniqueSubjects_UniqueSubjects',
-            'UniqueSubjects_UniqueSubjects_xlsx'
-        ]
-        
-        cursor.execute('SHOW TABLES')
-        tables = [table['Tables_in_' + actual_schema] for table in cursor.fetchall()]
-        
-        matching_tables = [
-            table for table in tables 
-            for possible_name in possible_table_names 
-            if table.lower() == possible_name.lower() or possible_name.lower() in table.lower()
-        ]
-        
-        if not matching_tables:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"UniqueSubjects table not found in schema '{actual_schema}'. Available tables: {tables}"
-            )
-        
-        table_name = matching_tables[0]
-        
-        cursor.execute(f'SELECT COUNT(*) as total FROM `{table_name}`')
-        total_rows = cursor.fetchone()['total']
-        
-        cursor.execute(f'SELECT * FROM `{table_name}` LIMIT %s OFFSET %s', (limit, offset))
-        rows = cursor.fetchall()
-        
-        return {
-            "success": True,
-            "database": actual_schema,
-            "tableName": table_name,
-            "pagination": {
-                "total": total_rows,
-                "limit": limit,
-                "offset": offset,
-                "hasMore": offset + len(rows) < total_rows
-            },
-            "data": rows
-        }
-    
-    except HTTPException as he:
-        raise he
-    except Exception as e:
-        logger.error(f"Error retrieving UniqueSubjects: {e}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Database error: {str(e)}"
-        )
-    finally:
-        if conn:
-            conn.close()
 @app.get("/api/schema/{schema_name}/sortedtable")
 async def get_sorted_table(
     schema_name: str,
@@ -842,20 +750,24 @@ async def get_sorted_table(
 ):
     """
     Retrieve SortedTable data
-    """
+        """
     conn = None
     try:
+        # Establish database connection
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
+        # Query to get all schemas
         cursor.execute('SHOW DATABASES')
         databases = cursor.fetchall()
         
+        # Convert to list of database names
         available_schemas = [
             db['Database'] for db in databases 
-            if db['Database'].lower() not in ['information_schema', 'mysql', 'performance_schema', 'sys', 'defaultdb', 'login_details']
+            if db['Database'].lower() not in ['information_schema', 'mysql', 'performance_schema', 'sys', 'defaultdb']
         ]
         
+        # Check if schema exists (case-insensitive)
         matching_schemas = [
             schema for schema in available_schemas 
             if schema.lower() == schema_name.lower()
@@ -868,13 +780,18 @@ async def get_sorted_table(
                 headers={"X-Available-Schemas": json.dumps(available_schemas)}
             )
         
+        # Use the matched schema (preserving original case)
         actual_schema = matching_schemas[0]
+        
+        # Switch to the specific database
         conn.database = actual_schema
         cursor = conn.cursor(dictionary=True)
         
+        # Check if table exists
         cursor.execute('SHOW TABLES')
         tables = [table['Tables_in_' + actual_schema] for table in cursor.fetchall()]
         
+        # Check for possible table variations
         possible_table_names = [
             'SortedTable_SortedTable_xlsx',
             'SortedTable_SortedTable', 
@@ -896,19 +813,25 @@ async def get_sorted_table(
                 headers={"X-Available-Tables": json.dumps(tables)}
             )
         
+        # Use the first matching table
         table_name = matching_tables[0]
         
+        # Get table columns
         cursor.execute(f'DESCRIBE `{table_name}`')
         columns = cursor.fetchall()
         
+        # Determine sort column
         sort_column = sort_by or columns[0]['Field']
         
+        # Validate sort column exists
         if not any(col['Field'].lower() == sort_column.lower() for col in columns):
             sort_column = columns[0]['Field']
         
+        # Count total rows
         cursor.execute(f'SELECT COUNT(*) as total FROM `{table_name}`')
         total_rows = cursor.fetchone()['total']
         
+        # Construct dynamic query
         query = f"""
         SELECT * FROM `{table_name}`
         ORDER BY `{sort_column}` {order}
@@ -941,12 +864,224 @@ async def get_sorted_table(
     
     except HTTPException as he:
         raise he
+    
     except Exception as e:
         logger.error(f"Error retrieving SortedTable: {e}")
         raise HTTPException(
             status_code=500, 
             detail=f"Database error: {str(e)}"
         )
+    
+    finally:
+        if conn:
+            conn.close()
+
+@app.get("/api/schema/{schema_name}/sortedtableformatted")
+async def get_sorted_table_formatted(
+    schema_name: str,
+    limit: Optional[int] = Query(default=1000, ge=1, le=5000),
+    offset: Optional[int] = Query(default=0, ge=0)
+):
+    """
+    Retrieve SortedTableFormatted data from a specific schema
+    """
+    conn = None
+    try:
+        # Establish database connection
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Verify schema exists
+        cursor.execute('SHOW DATABASES')
+        databases = cursor.fetchall()
+        available_schemas = [
+            db['Database'] for db in databases 
+            if db['Database'].lower() not in ['information_schema', 'mysql', 'performance_schema', 'sys', 'defaultdb']
+        ]
+        
+        matching_schemas = [
+            schema for schema in available_schemas 
+            if schema.lower() == schema_name.lower()
+        ]
+        
+        if not matching_schemas:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Schema '{schema_name}' not found."
+            )
+        
+        # Use the matched schema
+        actual_schema = matching_schemas[0]
+        
+        # Switch to the specific database
+        conn.database = actual_schema
+        cursor = conn.cursor(dictionary=True)
+        
+        # Check if the SortedTableFormatted table exists (check variations of the name)
+        cursor.execute('SHOW TABLES')
+        tables = [table['Tables_in_' + actual_schema] for table in cursor.fetchall()]
+        
+        # Look for variations of SortedTableFormatted
+        possible_table_names = [
+            'SortedTableFormatted',
+            'SortedTable_Formatted',
+            'sortedtableformatted',
+            'Formatted_SortedTable',
+            'SortedTableFormatted_SortedTableFormatted',
+            'SortedTableFormatted_SortedTableFormatted_xlsx'
+        ]
+        
+        matching_tables = [
+            table for table in tables 
+            for possible_name in possible_table_names 
+            if table.lower() == possible_name.lower() or possible_name.lower() in table.lower()
+        ]
+        
+        if not matching_tables:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"SortedTableFormatted table not found in schema '{actual_schema}'. Available tables: {tables}"
+            )
+        
+        # Use the first matching table
+        table_name = matching_tables[0]
+        
+        # Count total rows
+        cursor.execute(f'SELECT COUNT(*) as total FROM `{table_name}`')
+        total_rows = cursor.fetchone()['total']
+        
+        # Fetch data
+        cursor.execute(f'SELECT * FROM `{table_name}` LIMIT %s OFFSET %s', (limit, offset))
+        rows = cursor.fetchall()
+        
+        return {
+            "success": True,
+            "database": actual_schema,
+            "tableName": table_name,
+            "pagination": {
+                "total": total_rows,
+                "limit": limit,
+                "offset": offset,
+                "hasMore": offset + len(rows) < total_rows
+            },
+            "data": rows
+        }
+    
+    except HTTPException as he:
+        raise he
+    
+    except Exception as e:
+        logger.error(f"Error retrieving SortedTableFormatted: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
+    
+    finally:
+        if conn:
+            conn.close()
+
+@app.get("/api/schema/{schema_name}/uniquesubjects")
+async def get_unique_subjects(
+    schema_name: str,
+    limit: Optional[int] = Query(default=1000, ge=1, le=5000),
+    offset: Optional[int] = Query(default=0, ge=0)
+):
+    """
+    Retrieve UniqueSubjects data from a specific schema
+    """
+    conn = None
+    try:
+        # Establish database connection
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Verify schema exists
+        cursor.execute('SHOW DATABASES')
+        databases = cursor.fetchall()
+        available_schemas = [
+            db['Database'] for db in databases 
+            if db['Database'].lower() not in ['information_schema', 'mysql', 'performance_schema', 'sys', 'defaultdb']
+        ]
+        
+        matching_schemas = [
+            schema for schema in available_schemas 
+            if schema.lower() == schema_name.lower()
+        ]
+        
+        if not matching_schemas:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Schema '{schema_name}' not found."
+            )
+        
+        # Use the matched schema
+        actual_schema = matching_schemas[0]
+        
+        # Switch to the specific database
+        conn.database = actual_schema
+        cursor = conn.cursor(dictionary=True)
+        
+        # Check if the UniqueSubjects table exists (check variations of the name)
+        cursor.execute('SHOW TABLES')
+        tables = [table['Tables_in_' + actual_schema] for table in cursor.fetchall()]
+        
+        # Look for variations of UniqueSubjects
+        possible_table_names = [
+            'UniqueSubjects',
+            'Unique_Subjects',
+            'uniquesubjects',
+            'unique_subjects',
+            'UniqueSubjects_UniqueSubjects',
+            'UniqueSubjects_UniqueSubjects_xlsx'
+        ]
+        
+        matching_tables = [
+            table for table in tables 
+            for possible_name in possible_table_names 
+            if table.lower() == possible_name.lower() or possible_name.lower() in table.lower()
+        ]
+        
+        if not matching_tables:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"UniqueSubjects table not found in schema '{actual_schema}'. Available tables: {tables}"
+            )
+        
+        # Use the first matching table
+        table_name = matching_tables[0]
+        
+        # Count total rows
+        cursor.execute(f'SELECT COUNT(*) as total FROM `{table_name}`')
+        total_rows = cursor.fetchone()['total']
+        
+        # Fetch data
+        cursor.execute(f'SELECT * FROM `{table_name}` LIMIT %s OFFSET %s', (limit, offset))
+        rows = cursor.fetchall()
+        
+        return {
+            "success": True,
+            "database": actual_schema,
+            "tableName": table_name,
+            "pagination": {
+                "total": total_rows,
+                "limit": limit,
+                "offset": offset,
+                "hasMore": offset + len(rows) < total_rows
+            },
+            "data": rows
+        }
+    
+    except HTTPException as he:
+        raise he
+    
+    except Exception as e:
+        logger.error(f"Error retrieving UniqueSubjects: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
+    
     finally:
         if conn:
             conn.close()
