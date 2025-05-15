@@ -1,3 +1,4 @@
+// src/LoginPage.jsx
 import React, { useState } from 'react';
 import './LoginPage.css';
 
@@ -8,6 +9,7 @@ const LoginPage = ({ onLoginSuccess }) => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     setError('');
@@ -17,17 +19,35 @@ const LoginPage = ({ onLoginSuccess }) => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.username === 'SRM' && formData.password === 'Jaimatadi') {
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
       onLoginSuccess();
-    } else {
+    } catch (error) {
       setError('Invalid username or password');
       const loginBox = document.querySelector('.login-box');
       loginBox.classList.add('shake');
       setTimeout(() => {
         loginBox.classList.remove('shake');
       }, 500);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -50,6 +70,7 @@ const LoginPage = ({ onLoginSuccess }) => {
               placeholder="Username"
               value={formData.username}
               onChange={handleChange}
+              disabled={isLoading}
               required
             />
           </div>
@@ -60,12 +81,14 @@ const LoginPage = ({ onLoginSuccess }) => {
               placeholder="Password"
               value={formData.password}
               onChange={handleChange}
+              disabled={isLoading}
               required
             />
             <button 
               type="button" 
               className="password-toggle"
               onClick={() => setShowPassword(!showPassword)}
+              disabled={isLoading}
             >
               {showPassword ? (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -80,8 +103,12 @@ const LoginPage = ({ onLoginSuccess }) => {
               )}
             </button>
           </div>
-          <button type="submit" className="login-button">
-            Login
+          <button 
+            type="submit" 
+            className="login-button"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Logging in...' : 'Login'}
           </button>
         </form>
       </div>
