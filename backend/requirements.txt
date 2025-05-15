@@ -1,24 +1,10 @@
-# Web Framework
+Flask
+flask-cors
 fastapi
 uvicorn
-python-multipart
-flask
-flask-cors
-
-# Database
-mysql-connector-python
-mysqlclient
 SQLAlchemy
-pymysql
-
-# Data Processing
+mysql-connector-python
 pandas
-openpyxl
-
-# Utilities
 python-dotenv
-requests
-python-jose
-
-# Logging
-logging
+bcrypt
+pydantic
