@@ -1,14 +1,13 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import './App.css';
 
-// Lazy load components for better performance
+// Lazy load components
 const LoginPage = lazy(() => import('./LoginPage'));
 const LandingPage = lazy(() => import('./LandingPage'));
 const CreateTimetable = lazy(() => import('./CreateTimetable'));
 const GenerateTimetable = lazy(() => import('./GenerateTimetable'));
 const ViewTimetablesPage = lazy(() => import('./ViewTimetablesPage'));
 
-// Error Boundary Component
 const ErrorFallback = ({ error, resetErrorBoundary }) => {
   return (
     <div role="alert" className="error-container">
@@ -27,13 +26,11 @@ function App() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Initial loading screen
     const loadingTimer = setTimeout(() => {
       setIsLoading(false);
       setCurrentScreen('login');
     }, 4000);
 
-    // Load theme preference
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
       setIsDarkMode(savedTheme === 'dark');
@@ -42,13 +39,11 @@ function App() {
     return () => clearTimeout(loadingTimer);
   }, []);
 
-  // Handle theme changes
   useEffect(() => {
     localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
     document.body.className = isDarkMode ? 'dark' : 'light';
   }, [isDarkMode]);
 
-  // Error handling method
   const handleError = (error) => {
     console.error('Unhandled error:', error);
     setError(error);
@@ -57,6 +52,27 @@ function App() {
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
     setCurrentScreen('landing');
+  };
+
+  // Add logout handler
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentScreen('login');
+    // Optional: Clear any stored session data
+    localStorage.removeItem('user');
+  };
+
+  // Add password change handler
+  const handlePasswordChange = async (oldPassword, newPassword) => {
+    try {
+      // Here you would typically make an API call to change the password
+      console.log('Password change requested', { oldPassword, newPassword });
+      // If successful, you might want to show a success message
+      return { success: true, message: 'Password changed successfully' };
+    } catch (error) {
+      handleError(error);
+      return { success: false, message: error.message };
+    }
   };
 
   const handleCreateTimetable = () => {
@@ -83,12 +99,10 @@ function App() {
     });
   };
 
-  // Reset error state
   const resetError = () => {
     setError(null);
   };
 
-  // Loading Screen
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -103,7 +117,6 @@ function App() {
     );
   }
 
-  // Error Handling
   if (error) {
     return (
       <ErrorFallback 
@@ -113,7 +126,6 @@ function App() {
     );
   }
 
-  // Screen Navigation
   return (
     <div className={`app-container ${isDarkMode ? 'dark' : 'light'}`}>
       <Suspense fallback={<div className="loading-spinner">Loading...</div>}>
@@ -133,6 +145,8 @@ function App() {
             isDarkMode={isDarkMode}
             toggleTheme={toggleTheme}
             onError={handleError}
+            onLogout={handleLogout} // Add logout handler
+            onPasswordChange={handlePasswordChange} // Add password change handler
           />
         )}
         

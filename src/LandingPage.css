@@ -370,3 +370,174 @@
     font-size: 15px;
   }
 }
+/* Settings Button and Dropdown */
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.settings-wrapper {
+  position: relative;
+}
+
+.settings-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 5px;
+  transition: transform 0.3s ease;
+}
+
+.settings-button:hover {
+  transform: rotate(90deg);
+}
+
+.settings-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: rgba(13, 25, 45, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 150px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  animation: fadeIn 0.3s ease;
+}
+
+.settings-dropdown button {
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  color: #dad7cf;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.settings-dropdown button:hover {
+  background: rgba(218, 215, 207, 0.1);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+  background: rgba(13, 25, 45, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 30px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  animation: slideInFromTop 0.3s ease;
+}
+
+.modal-content h2 {
+  color: #dad7cf;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.modal-input-group {
+  margin-bottom: 15px;
+}
+
+.modal-input-group input {
+  width: 100%;
+  padding: 12px;
+  background: rgba(218, 215, 207, 0.1);
+  border: 1px solid rgba(218, 215, 207, 0.2);
+  border-radius: 6px;
+  color: #dad7cf;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-buttons button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.modal-buttons button:first-child {
+  background: #4CAF50;
+  color: white;
+}
+
+.modal-buttons button:last-child {
+  background: #f44336;
+  color: white;
+}
+
+.modal-buttons button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.error-message {
+  color: #f44336;
+  margin-bottom: 15px;
+  text-align: center;
+  font-size: 14px;
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.success-message {
+  color: #4CAF50;
+  background-color: rgba(76, 175, 80, 0.1);
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.modal-input-group input {
+  width: 100%;
+  padding: 12px;
+  background: rgba(218, 215, 207, 0.1);
+  border: 1px solid rgba(218, 215, 207, 0.2);
+  border-radius: 6px;
+  color: #dad7cf;
+  margin-bottom: 10px;
+}
+
+.modal-input-group input:focus {
+  outline: none;
+  border-color: rgba(24, 144, 255, 0.3);
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}

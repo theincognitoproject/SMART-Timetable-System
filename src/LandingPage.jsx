@@ -3,13 +3,25 @@ import './LandingPage.css';
 
 const LandingPage = ({ 
   onCreateTimetable, 
-  onViewTimetables,  // Add this prop
+  onViewTimetables,
   isDarkMode, 
-  toggleTheme 
+  toggleTheme,
+  onLogout,
+  onError 
 }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [typedText, setTypedText] = useState('');
   const [typedSecondLine, setTypedSecondLine] = useState('');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+
   const firstLine = "Welcome, ADMIN!";
   const secondLine = "Transform Months of Work into Minutes with our timetable scheduler!";
 
@@ -45,9 +57,71 @@ const LandingPage = ({
     return () => clearInterval(typingInterval);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isSettingsOpen && !event.target.closest('.settings-wrapper')) {
+        setIsSettingsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isSettingsOpen]);
+
+  const handleSettingsClick = () => {
+    setIsSettingsOpen(!isSettingsOpen);
+  };
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    try {
+      // Validate passwords match
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        setPasswordError("New passwords don't match!");
+        return;
+      }
+
+      // Validate password requirements
+      const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+      if (!passwordRegex.test(passwordData.newPassword)) {
+        setPasswordError('Password must be at least 8 characters long and contain uppercase, lowercase, number and special character');
+        return;
+      }
+
+      const response = await fetch('http://localhost:8000/api/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: 'SRM',  // or get from your auth context/state
+          oldPassword: passwordData.oldPassword,
+          newPassword: passwordData.newPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setPasswordSuccess('Password changed successfully!');
+        setTimeout(() => {
+          setIsChangePasswordOpen(false);
+          setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+          setPasswordSuccess('');
+        }, 2000);
+      } else {
+        throw new Error(data.message || 'Failed to change password');
+      }
+
+    } catch (error) {
+      console.error('Password change error:', error);
+      setPasswordError(error.message || 'An error occurred while changing password');
+    }
+  };
   return (
     <div className={`landing-container ${isDarkMode ? 'dark' : 'light'}`}>
-      {/* Header Section */}
       <header className="header">
         <div className="logo-section">
           <img 
@@ -57,24 +131,49 @@ const LandingPage = ({
           />
         </div>
         
-        <div className="theme-switch-wrapper">
-          <div 
-            className="theme-switch" 
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-          >
-            <div className={`switch-track ${isDarkMode ? 'dark' : 'light'}`}>
-              <div className="switch-thumb">
-                {isDarkMode ? '🌙' : '☀️'}
+        <div className="header-controls">
+          <div className="theme-switch-wrapper">
+            <div 
+              className="theme-switch" 
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+            >
+              <div className={`switch-track ${isDarkMode ? 'dark' : 'light'}`}>
+                <div className="switch-thumb">
+                  {isDarkMode ? '🌙' : '☀️'}
+                </div>
               </div>
             </div>
+          </div>
+
+          <div className="settings-wrapper">
+            <button 
+              className="settings-button" 
+              onClick={handleSettingsClick}
+              aria-label="Settings"
+            >
+              ⚙️
+            </button>
+            
+            {isSettingsOpen && (
+              <div className="settings-dropdown">
+                <button onClick={() => {
+                  setIsChangePasswordOpen(true);
+                  setIsSettingsOpen(false);
+                }}>
+                  Change Password
+                </button>
+                <button onClick={onLogout}>
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
       <div className="divider"></div>
 
-      {/* Main Content */}
       <main className="main-content">
         <div className="content-left">
           <div className="text-container">
@@ -99,7 +198,7 @@ const LandingPage = ({
             </button>
             <button 
               className="action-button view"
-              onClick={onViewTimetables}  // Add onClick handler
+              onClick={onViewTimetables}
               aria-label="View existing Timetables"
             >
               View existing Timetables
@@ -118,6 +217,68 @@ const LandingPage = ({
           </div>
         </div>
       </main>
+
+      {isChangePasswordOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Change Password</h2>
+            {passwordError && <div className="error-message">{passwordError}</div>}
+            {passwordSuccess && <div className="success-message">{passwordSuccess}</div>}
+            <form onSubmit={handleChangePassword}>
+              <div className="modal-input-group">
+                <input
+                  type="password"
+                  placeholder="Current Password"
+                  value={passwordData.oldPassword}
+                  onChange={(e) => setPasswordData({
+                    ...passwordData,
+                    oldPassword: e.target.value
+                  })}
+                  required
+                />
+              </div>
+              <div className="modal-input-group">
+                <input
+                  type="password"
+                  placeholder="New Password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({
+                    ...passwordData,
+                    newPassword: e.target.value
+                  })}
+                  required
+                />
+              </div>
+              <div className="modal-input-group">
+                <input
+                  type="password"
+                  placeholder="Confirm New Password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({
+                    ...passwordData,
+                    confirmPassword: e.target.value
+                  })}
+                  required
+                />
+              </div>
+              <div className="modal-buttons">
+                <button type="submit">Change Password</button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setIsChangePasswordOpen(false);
+                    setPasswordError('');
+                    setPasswordSuccess('');
+                    setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
