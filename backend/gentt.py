@@ -33,9 +33,9 @@ class GlobalTimeTableGenerator:
 
         # Use provided section config or default
         default_sections = {
-            1: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'],
-            2: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'],
-            3: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
+            1: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
+            2: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
+            3: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
         }
         
         logger.info(f"Initializing with section configuration: {section_config}")
@@ -62,7 +62,12 @@ class GlobalTimeTableGenerator:
         self.global_teacher_schedule[teacher][day].add(slot)
 
     def is_venue_available(self, venue: str, day: str, slots: List[str]) -> bool:
-        return not any(slot in self.global_venue_schedule[venue][day] for slot in slots)
+        is_available = not any(slot in self.global_venue_schedule[venue][day] for slot in slots)
+        current_bookings = self.global_venue_schedule[venue][day]
+        print(f"Checking venue {venue} for {day} {slots}")
+        print(f"Current bookings: {current_bookings}")
+        print(f"Available: {is_available}")
+        return is_available
 
     def update_venue_schedule(self, venue: str, day: str, slots: List[str]):
         for slot in slots:
@@ -119,6 +124,15 @@ class GlobalTimeTableGenerator:
 
     # Include methods for scheduling JP and theory subjects
     def schedule_jp_subject(self, year: int, section: str, subject: Dict, venues: Dict) -> bool:
+        print(f"\nAttempting to schedule {subject['code']}")
+        print(f"Subject details: {subject}")
+        print(f"Available venues: {venues}")
+        
+        # Check if it's actually a practical subject
+        if not (subject['type'] in ['P', 'J'] or subject.get('needs_lab', False)):
+            print(f"WARNING: Non-practical subject {subject['code']} in schedule_jp_subject")
+            return self.schedule_theory_subject(year, section, subject)
+
         consecutive_scheduled = False
         available_days = self.days.copy()
         random.shuffle(available_days)
@@ -134,18 +148,26 @@ class GlobalTimeTableGenerator:
 
         # First try morning slots
         for day in available_days:
+            print(f"\nTrying day: {day}")
             for slot1, slot2 in morning_pairs:
+                print(f"Checking slots: {slot1}, {slot2}")
+                
                 if (self.check_global_constraints(year, section, subject, day, slot1) and 
                     self.check_global_constraints(year, section, subject, day, slot2) and
                     self.check_consecutive_slots_available(subject['teacher'], day, slot1, slot2)):
                     
+                    # Check venue availability
                     available_venue = None
                     for venue_no in venues.keys():
-                        if self.is_venue_available(venue_no, day, [slot1, slot2]):
+                        is_available = self.is_venue_available(venue_no, day, [slot1, slot2])
+                        print(f"Venue {venue_no} available: {is_available}")
+                        if is_available:
+                            print(f"Found available venue: {venue_no}")
                             available_venue = venue_no
                             break
                     
                     if available_venue:
+                        print(f"Scheduling in venue {available_venue} for slots {slot1}, {slot2}")
                         for slot in [slot1, slot2]:
                             self.all_timetables[(year, section)][day][slot] = {
                                 'code': subject['code'],
@@ -165,18 +187,25 @@ class GlobalTimeTableGenerator:
         # Only try afternoon slots if morning scheduling failed
         if not consecutive_scheduled:
             for day in available_days:
+                print(f"\nTrying afternoon slots for day: {day}")
                 for slot1, slot2 in afternoon_pairs:
+                    print(f"Checking slots: {slot1}, {slot2}")
+                    
                     if (self.check_global_constraints(year, section, subject, day, slot1) and 
                         self.check_global_constraints(year, section, subject, day, slot2) and
                         self.check_consecutive_slots_available(subject['teacher'], day, slot1, slot2)):
                         
                         available_venue = None
                         for venue_no in venues.keys():
-                            if self.is_venue_available(venue_no, day, [slot1, slot2]):
+                            is_available = self.is_venue_available(venue_no, day, [slot1, slot2])
+                            print(f"Venue {venue_no} available: {is_available}")
+                            if is_available:
+                                print(f"Found available venue: {venue_no}")
                                 available_venue = venue_no
                                 break
                         
                         if available_venue:
+                            print(f"Scheduling in venue {available_venue} for slots {slot1}, {slot2}")
                             for slot in [slot1, slot2]:
                                 self.all_timetables[(year, section)][day][slot] = {
                                     'code': subject['code'],
@@ -194,6 +223,7 @@ class GlobalTimeTableGenerator:
                     break
 
         if not consecutive_scheduled:
+            print(f"Failed to schedule consecutive slots for {subject['code']}")
             return False
 
         # Schedule remaining hours (without venue requirement)
@@ -202,11 +232,11 @@ class GlobalTimeTableGenerator:
             if remaining_hours <= 0:
                 break
 
-            # Try morning slots first for remaining single hours
+            # Try morning slots first
             morning_slots = [slot for slot in self.morning_slots 
                             if self.check_global_constraints(year, section, subject, day, slot)]
             
-            if morning_slots:  # If morning slots available, use them
+            if morning_slots:
                 slot = random.choice(morning_slots)
                 self.all_timetables[(year, section)][day][slot] = {
                     'code': subject['code'],
@@ -217,7 +247,7 @@ class GlobalTimeTableGenerator:
                 remaining_hours -= 1
                 continue
 
-            # Only if no morning slots available, try afternoon slots
+            # Try afternoon slots
             afternoon_slots = [slot for slot in self.afternoon_slots 
                             if self.check_global_constraints(year, section, subject, day, slot)]
             
@@ -447,26 +477,50 @@ class GlobalTimeTableGenerator:
         return False
     
 #Helper Functions
-def create_sample_data(subject_file):
+def create_sample_data(subject_file, faculty_df):
     try:
         df = pd.read_csv(subject_file)
+        subject_year_mapping = {}
+        
+        for i in range(1, 4): 
+            sub_col = f'SUB_{i}'
+            year_col = f'SUB_{i}_Year'
+            
+            valid_rows = faculty_df[faculty_df[sub_col].notna()]
+            
+            for _, row in valid_rows.iterrows():
+
+                subject_str = row[sub_col]
+                subject_code = subject_str.split('/')[0].strip()
+                subject_year_mapping[subject_code] = row[year_col]
+
+
         subjects_data = {
-            'Subject Code': df['Subject Code'].values,
+            'Subject Code': df['SubjectCode'].values,
             'Hours': df['Hours'].values,
-            'Subject Type': [code[-1] if pd.notna(code) else None for code in df['Subject Code']],
-            'Subject Year': df['year'].values
+            'Subject Type': [code[-1] if pd.notna(code) else None for code in df['SubjectCode']], 
+            'Subject Year': [subject_year_mapping.get(code, None) for code in df['SubjectCode']]  
         }
-        return pd.DataFrame(subjects_data)
+        
+        # Create DataFrame and filter out rows where Subject Year is None
+        result_df = pd.DataFrame(subjects_data)
+        result_df = result_df[result_df['Subject Year'].notna()]
+        
+        # Convert Subject Year to int
+        result_df['Subject Year'] = result_df['Subject Year'].astype(int)
+        
+        return result_df
+    
     except Exception as e:
         raise ValueError(f"Error processing subject list file: {str(e)}")
-
+    
 def load_venue_data(venue_file):
     try:
         df = pd.read_csv(venue_file)
         return dict(zip(df['Venue No'], df['Venue Name']))
     except Exception as e:
         raise ValueError(f"Error processing venue list file: {str(e)}")
-
+    
 def process_faculty_data(faculty_df: pd.DataFrame) -> Dict:
     faculty_allocations = {}
     
@@ -484,20 +538,30 @@ def process_faculty_data(faculty_df: pd.DataFrame) -> Dict:
     
     return faculty_allocations
 
+
 def get_subjects_for_section(year: int, section: str, subjects_df: pd.DataFrame, 
                            faculty_allocations: Dict) -> List[Dict]:
     section_subjects = []
     section_key = f'CSE-{section}'
     
     year_subjects = subjects_df[subjects_df['Subject Year'] == year]
+    print(f"\nProcessing subjects for {section_key}, Year {year}")
     
     for _, subject in year_subjects.iterrows():
         if section_key in faculty_allocations and subject['Subject Code'] in faculty_allocations[section_key]:
+            # Get the last character of subject code
+            subject_code = subject['Subject Code']
+            subject_type = subject_code[-1]  # This will be P, J, or T
+            needs_lab = subject_type in ['P', 'J']
+            
+            print(f"Subject: {subject_code}, Type: {subject_type}, Needs Lab: {needs_lab}")
+            
             section_subjects.append({
-                'code': subject['Subject Code'],
-                'type': subject['Subject Type'],
+                'code': subject_code,
+                'type': subject_type,
                 'hours': subject['Hours'],
-                'teacher': faculty_allocations[section_key][subject['Subject Code']]
+                'teacher': faculty_allocations[section_key][subject_code],
+                'needs_lab': needs_lab
             })
     
     return section_subjects
@@ -573,60 +637,29 @@ def save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df
                 )
                 """))
 
-                                # Helper function to get employee ID
-                def get_employee_id(teacher_name, faculty_df, cdc_df):
-                    if pd.isna(teacher_name) or teacher_name == 'N/A':
-                        return None
-                    
-                    # First check faculty dataframe
-                    faculty_row = faculty_df[faculty_df['Name'] == teacher_name]
-                    if not faculty_row.empty:
-                        return faculty_row['Employee_ID'].values[0]
-                    
-                    # If not found, check CDC dataframe
-                    if cdc_df is not None:
-                        cdc_row = cdc_df[cdc_df['Name'] == teacher_name]
-                        if not cdc_row.empty:
-                            return cdc_row['Employee_ID'].values[0]
-                    
-                    print(f"Could not find Employee ID for {teacher_name}")
-                    return None
-
-                # Save Class Timetables
-                valid_sections = {}
-                for (year, section), subjects in all_sections_data.items():
-                    if not subjects:  # Skip empty sections
-                        print(f"Skipping empty section: Year {year} Section {section}")
-                        continue
-
-                    if (year, section) not in generator.all_timetables:
-                        print(f"No timetable found for: Year {year} Section {section}")
-                        continue
-
-                    timetable_data = {}
-                    free_hours = {}
+                # Save Class Timetables with explicit venue information
+                for (year, section), timetable in generator.all_timetables.items():
+                    formatted_timetable = {}
+                    free_hours = defaultdict(list)
                     
                     for day in generator.days:
-                        timetable_data[day] = {}
-                        free_hours[day] = []
-                        
+                        formatted_timetable[day] = {}
                         for slot in generator.slots:
-                            try:
-                                cell = generator.all_timetables[(year, section)][day][slot]
-                                if isinstance(cell, dict):
-                                    timetable_data[day][slot] = {
-                                        'code': cell.get('code', 'N/A'),
-                                        'teacher': cell.get('teacher', 'N/A'),
-                                        'type': cell.get('type', 'Regular')
-                                    }
-                                else:
-                                    timetable_data[day][slot] = cell
-                                    if cell == "FREE":
-                                        free_hours[day].append(slot)
-                            except KeyError:
-                                print(f"Missing data for {year}-{section} {day} {slot}")
-                                timetable_data[day][slot] = "FREE"
-                                free_hours[day].append(slot)
+                            cell = timetable[day][slot]
+                            if isinstance(cell, dict):
+                                formatted_timetable[day][slot] = {
+                                    'code': cell.get('code', 'N/A'),
+                                    'teacher': cell.get('teacher', 'N/A'),
+                                    'type': cell.get('type', 'N/A'),
+                                    'venue': cell.get('venue', 'N/A')  # Ensure venue is included
+                                }
+                                # Print debug information
+                                if 'venue' in cell:
+                                    print(f"Saving venue {cell['venue']} for {year}-{section} {day} {slot}")
+                            else:
+                                formatted_timetable[day][slot] = cell
+                                if cell == "FREE" and slot not in ["BREAK", "LUNCH"]:
+                                    free_hours[day].append(slot)
 
                     # Insert class timetable
                     connection.execute(text(f"""
@@ -636,125 +669,83 @@ def save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df
                     """), {
                         'year': year,
                         'section': section,
-                        'timetable_data': json.dumps(timetable_data),
-                        'free_hours': json.dumps(free_hours)
+                        'timetable_data': json.dumps(formatted_timetable),
+                        'free_hours': json.dumps(dict(free_hours))
                     })
-                    
-                    valid_sections[(year, section)] = timetable_data
 
-                # Collect unique teachers from valid sections only
-                all_teachers = set()
-                for section_data in valid_sections.values():
-                    for day_data in section_data.values():
-                        for slot_data in day_data.values():
-                            if isinstance(slot_data, dict):
-                                teacher = slot_data.get('teacher')
-                                if teacher and teacher != 'N/A':
-                                    all_teachers.add(teacher)
+                # Save Teacher Timetables with venue information
+                teacher_schedules = defaultdict(lambda: defaultdict(dict))
+                teacher_free_hours = defaultdict(lambda: defaultdict(list))
 
-                # Save Teacher Timetables
-                for teacher in all_teachers:
-                    # Get employee ID
-                    employee_id = get_employee_id(teacher, faculty_df, cdc_df)
-                    
-                    if not employee_id:
-                        print(f"Skipping teacher without Employee ID: {teacher}")
-                        continue
-
-                    # Generate teacher timetable
-                    teacher_timetable_data = {}
-                    teacher_free_hours = {}
-
+                for (year, section), timetable in generator.all_timetables.items():
                     for day in generator.days:
-                        teacher_timetable_data[day] = {}
-                        teacher_free_hours[day] = []
-
                         for slot in generator.slots:
-                            # Find this teacher's classes across all sections
-                            teacher_class = None
-                            for (year, section), timetable in valid_sections.items():
-                                cell = timetable.get(day, {}).get(slot, {})
-                                if isinstance(cell, dict) and cell.get('teacher') == teacher:
-                                    teacher_class = {
-                                        'year': year,
-                                        'section': section,
-                                        'code': cell.get('code', 'N/A'),
-                                        'type': cell.get('type', 'Regular')
-                                    }
-                                    break
+                            cell = timetable[day][slot]
+                            if isinstance(cell, dict):
+                                teacher = cell['teacher']
+                                teacher_schedules[teacher][day][slot] = {
+                                    'year': year,
+                                    'section': section,
+                                    'code': cell['code'],
+                                    'type': cell['type'],
+                                    'venue': cell.get('venue', 'N/A')  # Include venue
+                                }
+                            elif slot not in ["BREAK", "LUNCH"]:
+                                for teacher in teacher_schedules:
+                                    if slot not in teacher_schedules[teacher].get(day, {}):
+                                        teacher_free_hours[teacher][day].append(slot)
 
-                            if teacher_class:
-                                teacher_timetable_data[day][slot] = teacher_class
-                            else:
-                                teacher_timetable_data[day][slot] = "FREE"
-                                if slot in generator.all_teaching_slots:
-                                    teacher_free_hours[day].append(slot)
-
-                    # Insert teacher timetable
+                # Save teacher timetables
+                for teacher in teacher_schedules:
                     connection.execute(text(f"""
                     INSERT INTO {schema_name}.teacher_timetables 
-                    (employee_id, teacher_name, timetable_data, free_hours)
-                    VALUES (:employee_id, :teacher_name, :timetable_data, :free_hours)
+                    (teacher_name, timetable_data, free_hours)
+                    VALUES (:teacher_name, :timetable_data, :free_hours)
                     """), {
-                        'employee_id': employee_id,
                         'teacher_name': teacher,
-                        'timetable_data': json.dumps(teacher_timetable_data),
-                        'free_hours': json.dumps(teacher_free_hours)
+                        'timetable_data': json.dumps(dict(teacher_schedules[teacher])),
+                        'free_hours': json.dumps(dict(teacher_free_hours[teacher]))
                     })
 
-                                # Save Venue Timetables
-                if venues:
-                    for venue_no, venue_name in venues.items():
-                        if not venue_no or not venue_name:
-                            print(f"Skipping invalid venue: {venue_no} - {venue_name}")
-                            continue
+                # Save Venue Timetables
+                venue_schedules = defaultdict(lambda: defaultdict(dict))
+                venue_free_hours = defaultdict(lambda: defaultdict(list))
 
-                        venue_timetable_data = {}
-                        venue_free_hours = {}
+                for (year, section), timetable in generator.all_timetables.items():
+                    for day in generator.days:
+                        for slot in generator.slots:
+                            cell = timetable[day][slot]
+                            if isinstance(cell, dict) and 'venue' in cell:
+                                venue = cell['venue'].split(' - ')[0]  # Get venue number
+                                venue_schedules[venue][day][slot] = {
+                                    'year': year,
+                                    'section': section,
+                                    'code': cell['code'],
+                                    'teacher': cell['teacher']
+                                }
+                            elif slot not in ["BREAK", "LUNCH"]:
+                                for venue in venues:
+                                    if slot not in venue_schedules[venue].get(day, {}):
+                                        venue_free_hours[venue][day].append(slot)
 
-                        for day in generator.days:
-                            venue_timetable_data[day] = {}
-                            venue_free_hours[day] = []
-
-                            for slot in generator.slots:
-                                # Find venue usage across all sections
-                                venue_class = None
-                                for (year, section), timetable in valid_sections.items():
-                                    cell = timetable.get(day, {}).get(slot, {})
-                                    if isinstance(cell, dict) and 'venue' in cell and cell['venue'].startswith(f"{venue_no}"):
-                                        venue_class = {
-                                            'year': year,
-                                            'section': section,
-                                            'code': cell.get('code', 'N/A'),
-                                            'teacher': cell.get('teacher', 'N/A')
-                                        }
-                                        break
-
-                                if venue_class:
-                                    venue_timetable_data[day][slot] = venue_class
-                                else:
-                                    venue_timetable_data[day][slot] = "FREE"
-                                    if slot in generator.all_teaching_slots:
-                                        venue_free_hours[day].append(slot)
-
-                        # Insert venue timetable
-                        connection.execute(text(f"""
-                        INSERT INTO {schema_name}.venue_timetables 
-                        (venue_id, venue_name, timetable_data, free_hours)
-                        VALUES (:venue_id, :venue_name, :timetable_data, :free_hours)
-                        """), {
-                            'venue_id': venue_no,
-                            'venue_name': venue_name,
-                            'timetable_data': json.dumps(venue_timetable_data),
-                            'free_hours': json.dumps(venue_free_hours)
-                        })
+                # Save venue timetables
+                for venue_id, venue_name in venues.items():
+                    connection.execute(text(f"""
+                    INSERT INTO {schema_name}.venue_timetables 
+                    (venue_id, venue_name, timetable_data, free_hours)
+                    VALUES (:venue_id, :venue_name, :timetable_data, :free_hours)
+                    """), {
+                        'venue_id': venue_id,
+                        'venue_name': venue_name,
+                        'timetable_data': json.dumps(dict(venue_schedules[str(venue_id)])),
+                        'free_hours': json.dumps(dict(venue_free_hours[str(venue_id)]))
+                    })
 
                 print(f"Timetables saved in schema: {schema_name}")
                 return True
 
     except Exception as e:
         print(f"Database save error: {str(e)}")
-        import traceback
         traceback.print_exc()
         return False
 
@@ -824,7 +815,8 @@ def generate_timetable():
 
         # Process data
         current_faculty_df = pd.read_csv(file_paths['faculty'])
-        subjects_df = create_sample_data(file_paths['subjects'])
+        # Pass faculty_df to create_sample_data
+        subjects_df = create_sample_data(file_paths['subjects'], current_faculty_df)
         current_venues = load_venue_data(file_paths['venues'])
         current_cdc_df = pd.read_csv(file_paths['cdc'])
         

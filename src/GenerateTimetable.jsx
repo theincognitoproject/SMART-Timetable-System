@@ -13,9 +13,9 @@ const GenerateTimetable = ({ onBack, isDarkMode, toggleTheme }) => {
 
   // State for section configuration
   const [sectionCounts, setSectionCounts] = useState({
-    1: 16, // Default values
-    2: 13,
-    3: 12
+    1: 26, // Default values
+    2: 26,
+    3: 26
   });
 
   // State for upload status and validation
