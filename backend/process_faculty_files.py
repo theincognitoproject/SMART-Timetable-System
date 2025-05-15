@@ -33,14 +33,19 @@ def main():
             print("Failed to connect to database or retrieve necessary information.")
             return 1
 
-        # Create tables from Excel files
+        # Create tables from Excel files with fixed names
         print("\nCreating tables from Excel files...")
-        sortedtable_name = create_table_from_excel(conn, cursor, faculty_list_path, "SortedTable")
-        facultypreferences_name = create_table_from_excel(conn, cursor, faculty_pref_path, "FacultyPreferences")
+        
+        # Use fixed table names instead of dynamically generated ones
+        sortedtable_name = create_fixed_table_from_excel(conn, cursor, faculty_list_path, "SortedTable_SortedTable")
+        facultypreferences_name = create_fixed_table_from_excel(conn, cursor, faculty_pref_path, "FacultyPreferences_FacultyPreferences")
 
         if not sortedtable_name or not facultypreferences_name:
             print("Failed to create required tables")
             return 1
+
+        # Rest of the function remains the same
+        # ...
 
         # Create duplicate of AllSubjects table
         print(f"\nCreating duplicate of {allsubjects_table} table...")
@@ -52,7 +57,14 @@ def main():
 
         # Calculate x
         x = calculate_x(cursor, sortedtable_name)
-        print(f"\nCalculated x value: {x}")
+        print(f"\nCalculated initial x value: {x}")
+        
+        # Count professors and modify x value
+        professor_count = count_professors(cursor, facultypreferences_name)
+        print(f"Number of professors found: {professor_count}")
+        
+        x = x - professor_count
+        print(f"Modified x value after subtracting professor count: {x}")
 
         # Initial subject allocation (SUB_1 and SUB_2)
         print("\nPerforming initial subject allocation...")
@@ -89,9 +101,9 @@ SUB_1 Allocated: {interim_summary[1]}
 SUB_2 Allocated: {interim_summary[2]}
         """)
 
-        # Allocate SUB_3
-        print("\nAllocating SUB_3 for faculty...")
-        allocate_sub3(cursor, sortedtable_name, facultypreferences_name)
+        # Allocate SUB_3, skipping the first y (professor_count) rows
+        print(f"\nAllocating SUB_3 for faculty (skipping first {professor_count} rows)...")
+        allocate_sub3(cursor, sortedtable_name, facultypreferences_name, professor_count)
         print("SUB_3 allocation completed")
 
         # Check for faculty without SUB_3 and optimize allocations
@@ -198,6 +210,7 @@ SUB_3 Allocated: {summary[3]}
             FROM {sortedtable_name}
             WHERE SUB_3 LIKE '%+'
         """)
+        
         swapped_count = cursor.fetchone()[0]
         
         if swapped_count > 0:
@@ -235,6 +248,53 @@ SUB_3 Allocated: {summary[3]}
                 cursor.close()
             conn.close()
             print("\nDatabase connection closed.")
+
+def count_professors(cursor, facultypreferences_name):
+    """Count the number of professors in the faculty preferences table"""
+    try:
+        # Check if the Designation column exists
+        cursor.execute(f"SHOW COLUMNS FROM {facultypreferences_name} LIKE 'Designation'")
+        designation_column = cursor.fetchone()
+        
+        if not designation_column:
+            # Try alternative column names
+            cursor.execute(f"DESCRIBE {facultypreferences_name}")
+            columns = cursor.fetchall()
+            designation_col = None
+            
+            for col in columns:
+                if 'design' in col[0].lower():
+                    designation_col = col[0]
+                    break
+            
+            if not designation_col:
+                print("Could not find Designation column in faculty preferences table. Assuming 0 professors.")
+                return 0
+            
+            # Count professors using the found column name
+            cursor.execute(f"""
+                SELECT COUNT(*) 
+                FROM {facultypreferences_name} 
+                WHERE {designation_col} LIKE '%Professor%' 
+                AND {designation_col} NOT LIKE '%Associate%' 
+                AND {designation_col} NOT LIKE '%Assistant%'
+            """)
+        else:
+            # Use the standard Designation column name
+            cursor.execute(f"""
+                SELECT COUNT(*) 
+                FROM {facultypreferences_name} 
+                WHERE Designation LIKE '%Professor%' 
+                AND Designation NOT LIKE '%Associate%' 
+                AND Designation NOT LIKE '%Assistant%'
+            """)
+        
+        professor_count = cursor.fetchone()[0]
+        return professor_count
+        
+    except mysql.connector.Error as err:
+        print(f"Error counting professors: {err}")
+        return 0
 
 def connect_to_database(schema_name):
     try:
@@ -444,6 +504,40 @@ def create_table_from_excel(conn, cursor, file_path, table_name_prefix):
         print(f"Error creating table from Excel: {e}")
         conn.rollback()
         return None
+    
+def create_fixed_table_from_excel(conn, cursor, file_path, fixed_table_name):
+    if not os.path.exists(file_path):
+        print(f"File '{file_path}' not found.")
+        return None
+
+    try:
+        df = pd.read_excel(file_path)
+        df.columns = [re.sub(r'\W+', '_', str(col).strip()) for col in df.columns]
+
+        cursor.execute(f"DROP TABLE IF EXISTS {fixed_table_name}")
+
+        # Create table with primary key
+        create_table_query = f"CREATE TABLE {fixed_table_name} ("
+        create_table_query += "id INT AUTO_INCREMENT PRIMARY KEY,"  # Add primary key
+        for col in df.columns:
+            create_table_query += f"{col} TEXT,"
+        create_table_query = create_table_query.rstrip(",") + ")"
+        cursor.execute(create_table_query)
+
+        # Insert data
+        for _, row in df.iterrows():
+            columns = ", ".join(df.columns)
+            placeholders = ", ".join(["%s"] * len(df.columns))
+            values = tuple(None if pd.isna(val) else str(val) for val in row)
+            cursor.execute(f"INSERT INTO {fixed_table_name} ({columns}) VALUES ({placeholders})", values)
+
+        conn.commit()
+        print(f"Created and populated table '{fixed_table_name}'")
+        return fixed_table_name
+    except Exception as e:
+        print(f"Error creating table from Excel: {e}")
+        conn.rollback()
+        return None
 
 def create_allsubjects_duplicate(cursor, allsubjects_table):
     try:
@@ -541,18 +635,32 @@ def find_alternative_subject(cursor, subject_code, subject_to_avoid):
     except Exception as e:
         print(f"Error in find_alternative_subject: {e}")
         return None
-
+    
 def allocate_subjects(cursor, x, sortedtable_name, facultypreferences_name):
     try:
         cursor.execute(f"SELECT Name, Employee_ID FROM {sortedtable_name}")
         faculties = cursor.fetchall()
 
+        # Define the preference checking order
+        pref_order = [
+            ('1_1', '1.1'), ('2_1', '2.1'),
+            ('1_2', '1.2'), ('2_2', '2.2'),
+            ('1_3', '1.3'), ('2_3', '2.3'),
+            ('1_4', '1.4'), ('2_4', '2.4'),
+            ('1_5', '1.5')
+        ]
+
         for i, (faculty_name, emp_id) in enumerate(faculties):
             if i < x:
                 # For rows before x, only assign SUB_1
-                for pref_num in range(1, 5):
+                subjects_assigned = False
+                
+                for pref_col, pref_label in pref_order:
+                    if subjects_assigned:
+                        break
+                        
                     cursor.execute(f"""
-                        SELECT `1_{pref_num}` 
+                        SELECT {pref_col} 
                         FROM {facultypreferences_name} 
                         WHERE Employee_ID = %s
                     """, (emp_id,))
@@ -577,25 +685,27 @@ def allocate_subjects(cursor, x, sortedtable_name, facultypreferences_name):
                                 UPDATE {sortedtable_name} 
                                 SET SUB_1 = %s, SUB_1_PREF = %s
                                 WHERE Employee_ID = %s
-                            """, (available_subject[0], f"1.{pref_num}", emp_id))
+                            """, (available_subject[0], pref_label, emp_id))
                             
                             cursor.execute("""
                                 DELETE FROM allsubjectsduplicate 
                                 WHERE subjects = %s 
                                 LIMIT 1
                             """, (available_subject[0],))
+                            
+                            subjects_assigned = True
                             break
                         
             else:
                 # For rows after x, try to assign both SUB_1 and SUB_2
                 subjects_assigned = False
                 
-                for pref_num in range(1, 5):
+                for pref_col, pref_label in pref_order:
                     if subjects_assigned:
                         break
                         
                     cursor.execute(f"""
-                        SELECT `1_{pref_num}` 
+                        SELECT {pref_col} 
                         FROM {facultypreferences_name} 
                         WHERE Employee_ID = %s
                     """, (emp_id,))
@@ -616,7 +726,6 @@ def allocate_subjects(cursor, x, sortedtable_name, facultypreferences_name):
                         
                         if len(available_subjects) >= 2:
                             sub1 = available_subjects[0][0]
-                            
                                                               
                             # Find a SUB_2 that doesn't have the same class and section as SUB_1
                             sub2 = None
@@ -631,7 +740,7 @@ def allocate_subjects(cursor, x, sortedtable_name, facultypreferences_name):
                                     SET SUB_1 = %s, SUB_1_PREF = %s,
                                         SUB_2 = %s, SUB_2_PREF = %s
                                     WHERE Employee_ID = %s
-                                """, (sub1, f"1.{pref_num}", sub2, f"1.{pref_num}", emp_id))
+                                """, (sub1, pref_label, sub2, pref_label, emp_id))
                                 
                                 # Use parameterized queries for each deletion
                                 cursor.execute("DELETE FROM allsubjectsduplicate WHERE subjects = %s LIMIT 1", (sub1,))
@@ -645,9 +754,9 @@ def allocate_subjects(cursor, x, sortedtable_name, facultypreferences_name):
                 
                 # If no pair found, try to assign just SUB_1
                 if not subjects_assigned:
-                    for pref_num in range(1, 5):
+                    for pref_col, pref_label in pref_order:
                         cursor.execute(f"""
-                            SELECT `1_{pref_num}` 
+                            SELECT {pref_col} 
                             FROM {facultypreferences_name} 
                             WHERE Employee_ID = %s
                         """, (emp_id,))
@@ -673,7 +782,7 @@ def allocate_subjects(cursor, x, sortedtable_name, facultypreferences_name):
                                     SET SUB_1 = %s, SUB_1_PREF = %s,
                                         SUB_2 = NULL, SUB_2_PREF = NULL
                                     WHERE Employee_ID = %s
-                                """, (available_subject[0], f"1.{pref_num}", emp_id))
+                                """, (available_subject[0], pref_label, emp_id))
                                 
                                 cursor.execute("""
                                     DELETE FROM allsubjectsduplicate 
@@ -685,72 +794,27 @@ def allocate_subjects(cursor, x, sortedtable_name, facultypreferences_name):
         print(f"Error allocating subjects: {err}")
         raise err
 
-def fill_empty_sub2_after_x(cursor, x, sortedtable_name):
-    try:
-        cursor.execute(f"""
-            SELECT Name, Employee_ID, SUB_1 
-            FROM {sortedtable_name} 
-            WHERE SUB_2 IS NULL 
-            LIMIT %s, 18446744073709551615
-        """, (x,))
-        
-        faculties_with_empty_sub2 = cursor.fetchall()
-        print(f"Found {len(faculties_with_empty_sub2)} faculties needing SUB_2 allocation")
-        
-        for faculty_name, emp_id, sub1 in faculties_with_empty_sub2:
-            print(f"Processing faculty {emp_id}")
-            
-            if sub1:
-                cursor.execute("""
-                    SELECT subjects
-                    FROM allsubjectsduplicate
-                    WHERE LEFT(subjects, 9) = LEFT(%s, 9)
-                    AND subjects != %s
-                    LIMIT 1
-                """, (sub1, sub1))
-                
-                available_subjects = cursor.fetchall()
-                
-                # Find a SUB_2 that doesn't have the same class and section as SUB_1
-                sub2 = None
-                for potential_sub2 in available_subjects:
-                    if not has_same_class_and_section(sub1, potential_sub2[0]):
-                        sub2 = potential_sub2[0]
-                        break
-                
-                if sub2:
-                    print(f"Assigning SUB_2: {sub2} to faculty {emp_id}")
-                    
-                    cursor.execute(f"""
-                        UPDATE {sortedtable_name} 
-                        SET SUB_2 = %s, SUB_2_PREF = 'Random'
-                        WHERE Employee_ID = %s
-                    """, (sub2, emp_id))
-                    
-                    cursor.execute("""
-                        DELETE FROM allsubjectsduplicate 
-                        WHERE subjects = %s
-                        LIMIT 1
-                    """, (sub2,))
-                    
-                    print(f"Successfully assigned SUB_2 for faculty {emp_id}")
-                else:
-                    print(f"Could not find a SUB_2 with different class/section for faculty {emp_id}")
-    except mysql.connector.Error as err:
-        print(f"Error filling empty SUB_2: {err}")
-        raise err
-    
-def allocate_sub3(cursor, sortedtable_name, facultypreferences_name):
+def allocate_sub3(cursor, sortedtable_name, facultypreferences_name, professor_count):
     try:
         print("\nStarting SUB_3 allocation...")
         cursor.execute(f"""
             SELECT Name, Employee_ID, SUB_1, SUB_2, SUB_3
             FROM {sortedtable_name}
             WHERE SUB_3 IS NULL
+            LIMIT {professor_count}, 18446744073709551615
         """)
         
         faculties = cursor.fetchall()
-        print(f"Found {len(faculties)} faculties needing SUB_3 allocation")
+        print(f"Found {len(faculties)} faculties needing SUB_3 allocation (skipping first {professor_count} rows)")
+        
+        # Define the preference checking order
+        pref_order = [
+            ('1_1', '1.1'), ('2_1', '2.1'),
+            ('1_2', '1.2'), ('2_2', '2.2'),
+            ('1_3', '1.3'), ('2_3', '2.3'),
+            ('1_4', '1.4'), ('2_4', '2.4'),
+            ('1_5', '1.5')
+        ]
         
         for faculty in faculties:
             faculty_name, emp_id, current_sub1, current_sub2, _ = faculty
@@ -758,16 +822,16 @@ def allocate_sub3(cursor, sortedtable_name, facultypreferences_name):
             print(f"  Current SUB_1: {current_sub1}")
             print(f"  Current SUB_2: {current_sub2}")
             
-            # Check preferences from 1.1 to 2.4
+            # Try to allocate SUB_3 based on preferences
             subject_assigned = False
             
-            # Check core subject preferences (1.1 to 1.4)
-            for pref_num in range(1, 5):
+            # Check preferences in the specified order
+            for pref_col, pref_label in pref_order:
                 if subject_assigned:
                     break
                     
                 cursor.execute(f"""
-                    SELECT `1_{pref_num}` 
+                    SELECT {pref_col} 
                     FROM {facultypreferences_name} 
                     WHERE Employee_ID = %s
                 """, (emp_id,))
@@ -775,7 +839,7 @@ def allocate_sub3(cursor, sortedtable_name, facultypreferences_name):
                 
                 if preferred_subject and preferred_subject[0] and preferred_subject[0].lower() != 'nan':
                     preferred_subject = preferred_subject[0]
-                    print(f"Checking core preference 1.{pref_num}: {preferred_subject}")
+                    print(f"Checking preference {pref_label}: {preferred_subject}")
                     
                     # Check if subject exists in allsubjectsduplicate
                     cursor.execute("""
@@ -812,7 +876,7 @@ def allocate_sub3(cursor, sortedtable_name, facultypreferences_name):
                                 UPDATE {sortedtable_name} 
                                 SET SUB_3 = %s, SUB_3_PREF = %s
                                 WHERE Employee_ID = %s
-                            """, (subject, f"1.{pref_num}", emp_id))
+                            """, (subject, pref_label, emp_id))
                             
                             # Remove from allsubjectsduplicate
                             cursor.execute("""
@@ -827,74 +891,6 @@ def allocate_sub3(cursor, sortedtable_name, facultypreferences_name):
                     
                     if subject_assigned:
                         break
-            
-            # If no core subject assigned, check elective preferences (2.1 to 2.4)
-            if not subject_assigned:
-                for pref_num in range(1, 5):
-                    if subject_assigned:
-                        break
-                        
-                    cursor.execute(f"""
-                        SELECT `2_{pref_num}` 
-                        FROM {facultypreferences_name} 
-                        WHERE Employee_ID = %s
-                    """, (emp_id,))
-                    preferred_subject = cursor.fetchone()
-                    
-                    if preferred_subject and preferred_subject[0] and preferred_subject[0].lower() != 'nan':
-                        preferred_subject = preferred_subject[0]
-                        print(f"Checking elective preference 2.{pref_num}: {preferred_subject}")
-                        
-                        # Check if subject exists in allsubjectsduplicate
-                        cursor.execute("""
-                            SELECT subjects 
-                            FROM allsubjectsduplicate 
-                            WHERE LEFT(subjects, 9) = LEFT(%s, 9)
-                        """, (preferred_subject,))
-                        
-                        available_subjects = cursor.fetchall()
-                        
-                        for available_subject in available_subjects:
-                            subject = available_subject[0]
-                            print(f"  Checking candidate: {subject}")
-                            
-                            # Check conflicts with SUB_1 and SUB_2
-                            has_conflict = False
-                            
-                            if current_sub1:
-                                conflict_with_sub1 = has_same_class_and_section(current_sub1, subject)
-                                if conflict_with_sub1:
-                                    has_conflict = True
-                                    print(f"  CONFLICT: Candidate has same class and section as SUB_1")
-                            
-                            if current_sub2 and not has_conflict:
-                                conflict_with_sub2 = has_same_class_and_section(current_sub2, subject)
-                                if conflict_with_sub2:
-                                    has_conflict = True
-                                    print(f"  CONFLICT: Candidate has same class and section as SUB_2")
-                            
-                            if not has_conflict:
-                                # Allocate the subject
-                                print(f"  NO CONFLICTS FOUND - Allocating subject")
-                                cursor.execute(f"""
-                                    UPDATE {sortedtable_name} 
-                                    SET SUB_3 = %s, SUB_3_PREF = %s
-                                    WHERE Employee_ID = %s
-                                """, (subject, f"2.{pref_num}", emp_id))
-                                
-                                # Remove from allsubjectsduplicate
-                                cursor.execute("""
-                                    DELETE FROM allsubjectsduplicate 
-                                    WHERE subjects = %s
-                                    LIMIT 1
-                                """, (subject,))
-                                
-                                subject_assigned = True
-                                print(f"Assigned SUB_3: {subject}")
-                                break
-                        
-                        if subject_assigned:
-                            break
             
             # If still no subject assigned, try random allocation
             if not subject_assigned:
@@ -985,6 +981,61 @@ def allocate_sub3(cursor, sortedtable_name, facultypreferences_name):
         traceback.print_exc()  # Print full traceback for better debugging
         raise e
     
+def fill_empty_sub2_after_x(cursor, x, sortedtable_name):
+    try:
+        cursor.execute(f"""
+            SELECT Name, Employee_ID, SUB_1 
+            FROM {sortedtable_name} 
+            WHERE SUB_2 IS NULL 
+            LIMIT %s, 18446744073709551615
+        """, (x,))
+        
+        faculties_with_empty_sub2 = cursor.fetchall()
+        print(f"Found {len(faculties_with_empty_sub2)} faculties needing SUB_2 allocation")
+        
+        for faculty_name, emp_id, sub1 in faculties_with_empty_sub2:
+            print(f"Processing faculty {emp_id}")
+            
+            if sub1:
+                cursor.execute("""
+                    SELECT subjects
+                    FROM allsubjectsduplicate
+                    WHERE LEFT(subjects, 9) = LEFT(%s, 9)
+                    AND subjects != %s
+                    LIMIT 1
+                """, (sub1, sub1))
+                
+                available_subjects = cursor.fetchall()
+                
+                # Find a SUB_2 that doesn't have the same class and section as SUB_1
+                sub2 = None
+                for potential_sub2 in available_subjects:
+                    if not has_same_class_and_section(sub1, potential_sub2[0]):
+                        sub2 = potential_sub2[0]
+                        break
+                
+                if sub2:
+                    print(f"Assigning SUB_2: {sub2} to faculty {emp_id}")
+                    
+                    cursor.execute(f"""
+                        UPDATE {sortedtable_name} 
+                        SET SUB_2 = %s, SUB_2_PREF = 'Random'
+                        WHERE Employee_ID = %s
+                    """, (sub2, emp_id))
+                    
+                    cursor.execute("""
+                        DELETE FROM allsubjectsduplicate 
+                        WHERE subjects = %s
+                        LIMIT 1
+                    """, (sub2,))
+                    
+                    print(f"Successfully assigned SUB_2 for faculty {emp_id}")
+                else:
+                    print(f"Could not find a SUB_2 with different class/section for faculty {emp_id}")
+    except mysql.connector.Error as err:
+        print(f"Error filling empty SUB_2: {err}")
+        raise err
+
 def optimize_allocations(cursor, sortedtable_name):
     print("\n=== OPTIMIZING ALLOCATIONS ===")
     

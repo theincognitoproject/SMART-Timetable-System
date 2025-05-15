@@ -488,3 +488,61 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Add this to your CreateTimetable.css file */
+.download {
+  position: fixed;
+  bottom: 20px;
+  left: 40px;
+}
+
+/* Button spinner for download in progress */
+.action-button .button-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s linear infinite;
+  margin-right: 8px; /* Add some space between spinner and text */
+  vertical-align: middle;
+}
+
+.dark .action-button .button-spinner {
+  border: 2px solid rgba(5, 11, 21, 0.3);
+  border-top-color: #050b15;
+}
+
+.light .action-button .button-spinner {
+  border: 2px solid rgba(218, 215, 207, 0.3);
+  border-top-color: #dad7cf;
+}
+.action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.dark .action-button:disabled:hover,
+.light .action-button:disabled:hover {
+  transform: none !important;
+  box-shadow: none;
+  background: inherit;
+}
+
+/* Make sure downloads are properly spaced on smaller screens */
+@media (max-width: 768px) {
+  .download {
+    position: static;
+    width: 100%;
+    margin-bottom: 15px;
+  }
+}
+
+/* Animation for the spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -25,6 +25,7 @@ const CreateTimetable = ({
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('success');
   const [selectedDepartments, setSelectedDepartments] = useState([]);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const fullText = "Choose the departments required for timetable generation";
 
@@ -133,6 +134,240 @@ const CreateTimetable = ({
     });
   };
 
+  // Helper function to remove duplicates from UniqueSubjects data
+  const removeDuplicateSubjects = (data) => {
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return [];
+    }
+    
+    const uniqueMap = new Map();
+    
+    // Process each row to extract subject code
+    data.forEach(row => {
+      // If data is an array of objects (from API response)
+      if (typeof row === 'object' && !Array.isArray(row)) {
+        const values = Object.values(row);
+        // Assuming subject code is in the second column
+        if (values.length > 1 && values[1]) {
+          const subjectCode = values[1];
+          if (!uniqueMap.has(subjectCode)) {
+            uniqueMap.set(subjectCode, row);
+          }
+        }
+      } 
+      // If data is an array of arrays (manually constructed)
+      else if (Array.isArray(row)) {
+        if (row.length > 1 && row[1]) {
+          const subjectCode = row[1];
+          if (!uniqueMap.has(subjectCode)) {
+            uniqueMap.set(subjectCode, row);
+          }
+        }
+      }
+    });
+    
+    return Array.from(uniqueMap.values());
+  };
+
+  // Helper function to convert JSON data to CSV and download
+  const downloadCSV = (data, filename) => {
+    try {
+      // Handle empty data
+      if (!data || data.length === 0) {
+        console.warn('No data to download');
+        return false;
+      }
+
+      // Determine headers and format data
+      let csvContent = '';
+      
+      // If data is an array of objects
+      if (typeof data[0] === 'object' && !Array.isArray(data[0])) {
+        const headers = Object.keys(data[0]);
+        
+        // Add header row
+        csvContent += headers.join(',') + '\n';
+        
+        // Add data rows
+        csvContent += data.map(row => {
+          return headers.map(header => {
+            const value = row[header];
+            if (value === null || value === undefined) return '';
+            
+            // Handle special characters to maintain CSV format
+            if (typeof value === 'string') {
+              // Escape quotes and wrap fields containing commas or newlines in quotes
+              if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+                return `"${value.replace(/"/g, '""')}"`;
+              }
+              return value;
+            }
+            return value;
+          }).join(',');
+        }).join('\n');
+      } 
+      // If data is an array of arrays
+      else if (Array.isArray(data[0])) {
+        // Convert each row to CSV format
+        csvContent = data.map(row => {
+          return row.map(value => {
+            if (value === null || value === undefined) return '';
+            
+            // Handle special characters
+            if (typeof value === 'string') {
+              if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+                return `"${value.replace(/"/g, '""')}"`;
+              }
+              return value;
+            }
+            return value;
+          }).join(',');
+        }).join('\n');
+      }
+      
+      // Create blob and trigger download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      return true;
+    } catch (error) {
+      console.error('Error creating CSV file:', error);
+      return false;
+    }
+  };
+
+  // Use a different approach to handle the download
+  const fetchTableData = async (department, tableName) => {
+    try {
+      // Make the API endpoint all lowercase to match the backend
+      const endpoint = `/schema/${department}/${tableName.toLowerCase()}`;
+      console.log(`Fetching data from: ${endpoint}`);
+      
+      const response = await axiosInstance.get(endpoint);
+      
+      if (response.data.success && response.data.data) {
+        return { success: true, data: response.data.data };
+      } else {
+        console.warn(`No data from ${endpoint}`);
+        return { success: false, error: response.data.error || 'No data returned' };
+      }
+    } catch (error) {
+      console.error(`Error fetching ${tableName} for ${department}:`, error);
+      return { 
+        success: false, 
+        error: error.response?.data?.detail || error.message 
+      };
+    }
+  };
+
+  const handleDownload = async () => {
+    // Check if any departments are selected
+    if (selectedDepartments.length === 0) {
+      setToastMessage("Please select at least one department to download.");
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    setIsDownloading(true);
+
+    try {
+      // Arrays to store merged data
+      let allSortedTableFormattedData = [];
+      let allUniqueSubjectsData = [];
+      let errorDepartments = [];
+      let successCount = 0;
+      
+      // Process each selected department
+      for (const department of selectedDepartments) {
+        try {
+          console.log(`Processing department: ${department}`);
+          
+          // Try to fetch SortedTableFormatted data
+          const formattedResult = await fetchTableData(department, 'sortedtableformatted');
+          
+          // Try to fetch UniqueSubjects data
+          const uniqueResult = await fetchTableData(department, 'uniquesubjects');
+          
+          // If either request was successful, count as success
+          let departmentSuccess = false;
+          
+          if (formattedResult.success) {
+            allSortedTableFormattedData = [...allSortedTableFormattedData, ...formattedResult.data];
+            departmentSuccess = true;
+          }
+          
+          if (uniqueResult.success) {
+            allUniqueSubjectsData = [...allUniqueSubjectsData, ...uniqueResult.data];
+            departmentSuccess = true;
+          }
+          
+          if (departmentSuccess) {
+            successCount++;
+          } else {
+            // If both requests failed, add to error list
+            errorDepartments.push(department);
+          }
+          
+        } catch (error) {
+          console.error(`Error processing department ${department}:`, error);
+          errorDepartments.push(department);
+        }
+      }
+      
+      // Remove duplicates from UniqueSubjects data
+      const uniqueSubjectsWithoutDuplicates = removeDuplicateSubjects(allUniqueSubjectsData);
+      
+      // Download files if we have data
+      let downloadSuccess = false;
+      
+      if (allSortedTableFormattedData.length > 0) {
+        const success = downloadCSV(
+          allSortedTableFormattedData, 
+          `SortedTableFormatted_${selectedDepartments.join('_')}.csv`
+        );
+        downloadSuccess = success;
+      }
+      
+      if (uniqueSubjectsWithoutDuplicates.length > 0) {
+        const success = downloadCSV(
+          uniqueSubjectsWithoutDuplicates, 
+          `UniqueSubjects_${selectedDepartments.join('_')}.csv`
+        );
+        downloadSuccess = downloadSuccess || success;
+      }
+      
+      // Show appropriate toast message
+      if (errorDepartments.length === 0 && downloadSuccess) {
+        setToastMessage(`Successfully downloaded files for ${selectedDepartments.length} department(s).`);
+        setToastType('success');
+      } else if (errorDepartments.length === selectedDepartments.length || !downloadSuccess) {
+        setToastMessage(`Failed to download files. Please try again.`);
+        setToastType('error');
+      } else {
+        setToastMessage(
+          `Downloaded data for ${successCount} out of ${selectedDepartments.length} department(s). ` +
+          `Failed for: ${errorDepartments.join(', ')}`
+        );
+        setToastType('info');
+      }
+    } catch (error) {
+      console.error('Error during download process:', error);
+      setToastMessage('An error occurred during the download process.');
+      setToastType('error');
+    } finally {
+      setIsDownloading(false);
+      setShowToast(true);
+    }
+  };
+
   return (
     <div className={`create-timetable-container ${isDarkMode ? 'dark' : 'light'}`}>
       {/* Header */}
@@ -212,6 +447,7 @@ const CreateTimetable = ({
                           className="department-checkbox"
                           checked={selectedDepartments.includes(department)}
                           onChange={() => handleCheckboxChange(department)}
+                          disabled={isDownloading}
                         />
                       </td>
                     </tr>
@@ -226,15 +462,33 @@ const CreateTimetable = ({
           <button 
             className="action-button create-dept"
             onClick={handleCreateDepartment}
+            disabled={isDownloading}
           >
             Create a new department
             <div className="button-glow"></div>
           </button>
 
           <button 
+            className="action-button download"
+            onClick={handleDownload}
+            disabled={isDownloading || selectedDepartments.length === 0}
+          >
+            {isDownloading ? (
+              <>
+                <span className="button-spinner"></span> Downloading...
+              </>
+            ) : (
+              <>
+                Download
+                <div className="button-glow"></div>
+              </>
+            )}
+          </button>
+
+          <button 
             className="action-button generate"
             onClick={onGenerateTimetable}
-            disabled={selectedDepartments.length === 0}
+            disabled={isDownloading}
           >
             Generate Timetable
             <div className="button-glow"></div>
@@ -261,7 +515,7 @@ const CreateTimetable = ({
         <Toast 
           message={toastMessage} 
           type={toastType} 
-          duration={2000} 
+          duration={3000} 
           onClose={() => setShowToast(false)} 
         />
       )}
