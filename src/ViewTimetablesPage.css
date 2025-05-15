@@ -1,391 +1,406 @@
-/* ViewTimetablesPage.css */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: 'Arial', sans-serif;
-}
-
+/* Base Styles */
 .view-timetables-page {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-  background-color: #f4f4f4;
+    min-height: 100vh;
+    background: #050b15;
+    color: #dad7cf;
+    overflow: hidden;
 }
 
-/* Header Styles */
-.timetables-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px;
-  background-color: #2c3e50;
-  color: white;
+/* Header */
+.header {
+    width: 100%;
+    background: #050b15;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(218, 215, 207, 0.1);
 }
 
+.logo-section {
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    height: 35px;
+    width: auto;
+}
+
+/* Back Button */
 .back-button {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 20px;
-  cursor: pointer;
-  transition: color 0.3s ease;
+    margin: 15px;
+    padding: 8px 16px;
+    background: #dad7cf;
+    color: #050b15;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
 }
 
-.back-button:hover {
-  color: #3498db;
-}
-
-.theme-toggle {
-  cursor: pointer;
-  font-size: 20px;
-}
-
-/* Layout Styles */
+/* Main Layout */
 .timetable-layout {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
+    display: flex;
+    height: calc(100vh - 100px);
+    padding: 20px;
+    gap: 30px;
 }
-
-/* Sidebar Styles */
+/* Sidebar */
 .sidebar {
-  width: 250px;
-  background-color: #34495e;
-  padding: 20px;
-  overflow: hidden;
-  color: white;
-  border-right: 1px solid #2c3e50;
-  display: flex;
-  flex-direction: column;
-}
-
-.view-options {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+    width: 280px;
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+    max-height: calc(100vh - 120px);
+    background: #050b15;
+    border-right: 1px solid rgba(218, 215, 207, 0.1);
 }
 
 .view-options h3 {
-  border-bottom: 2px solid #3498db;
-  padding-bottom: 10px;
-  margin-bottom: 15px;
-  text-align: center;
+    color: #dad7cf;
+    font-size: 24px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(218, 215, 207, 0.1);
 }
 
 /* View Type Selector */
 .view-type-selector {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 20px;
-  gap: 10px;
+    margin-bottom: 25px;
 }
 
-.view-type-selector button {
-  width: 100%;
-  padding: 10px;
-  background-color: #2c3e50;
-  color: white;
-  border: 1px solid #3498db;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border-radius: 4px;
+/* View All Button */
+.view-all-button {
+    width: 100%;
+    padding: 12px 15px;
+    margin-top: 10px;
+    background: #3498db !important;
+    color: #dad7cf !important;
+    border: none;
+    border-radius: 4px;
+    text-align: center !important;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
 }
 
-.view-type-selector button.active {
-  background-color: #3498db;
-  color: white;
+.view-all-button:hover {
+    opacity: 0.9;
 }
 
-.view-type-selector button:hover {
-  background-color: #34495e;
+.view-all-button.active {
+    background: #2980b9 !important;
 }
-
-/* Timetable Items */
+/* Timetable Items Container */
 .timetable-items-container {
-  flex-grow: 1;
-  overflow-y: auto;
+    margin-top: 20px;
+    padding-right: 10px;
+    overflow-y: auto;
+    max-height: calc(100vh - 300px);
 }
 
 .timetable-items-container h4 {
-  margin-bottom: 10px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #3498db;
+    color: #dad7cf;
+    margin: 20px 0 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(218, 215, 207, 0.1);
+    font-size: 18px;
 }
-
-.timetable-item {
-  padding: 10px;
-  margin-bottom: 5px;
-  background-color: #2c3e50;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.timetable-item:hover {
-  background-color: #3498db;
-}
-
-.timetable-item.selected {
-  background-color: #2ecc71;
-  color: white;
-}
-
-/* Timetable Content Styles */
+/* Timetable Content */
 .timetable-content {
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;
-  background-color: #ecf0f1;
-}
-
-/* Multiple Timetables Layout */
-.multiple-timetables {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    max-height: calc(100vh - 120px);
 }
 
 .selected-timetable-container {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  padding: 20px;
-  width: 100%;
-  overflow-x: auto;
+    background: #050b15;
+    border-radius: 8px;
+    border: 1px solid rgba(218, 215, 207, 0.1);
+    overflow: hidden;
+    margin-bottom: 30px;
 }
 
-.selected-timetable-container h2 {
-  margin-bottom: 15px;
-  color: #2c3e50;
-  text-align: center;
+/* Timetable Header */
+.timetable-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: #050b15;
+    border-bottom: 1px solid rgba(218, 215, 207, 0.1);
 }
 
-/* Timetable Styles */
+.timetable-header h2 {
+    color: #dad7cf;
+    font-size: 20px;
+    font-weight: normal;
+}
+
+.download-btn {
+    padding: 8px 16px;
+    background: #dad7cf;
+    color: #050b15;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Table Styles */
 .timetable {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 800px;
-}
-
-.timetable thead {
-  background-color: #3498db;
-  color: white;
+    width: 100%;
+    border-collapse: collapse;
+    background: #050b15;
 }
 
 .timetable th,
 .timetable td {
-  border: 1px solid #ddd;
-  padding: 10px;
-  text-align: center;
+    padding: 15px;
+    text-align: center;
+    border: 1px solid rgba(218, 215, 207, 0.1);
+    color: #dad7cf;
 }
 
-.timetable .time-slot {
-  font-weight: bold;
-  background-color: #f1f1f1;
+.time-slot {
+    font-weight: normal;
+    color: #dad7cf;
 }
 
-.timetable .special-row {
-  background-color: #f9f9f9;
+.break-slot,
+.lunch-slot {
+    color: #dad7cf;
+    font-weight: bold;
 }
 
-.timetable .break-slot {
-  background-color: #e6e6e6;
-  font-weight: bold;
+.filled-slot {
+    background: rgba(218, 215, 207, 0.05);
 }
 
-.timetable .filled-slot {
-  background-color: #e6f3ff;
+.empty-slot {
+    color: rgba(218, 215, 207, 0.5);
+}
+/* Theme Switch */
+.theme-switch {
+    margin-left: auto;
+    padding: 5px;
+    cursor: pointer;
 }
 
-.timetable .empty-slot {
-  background-color: #fff;
-  color: #888;
+.switch-track {
+    width: 40px;
+    height: 20px;
+    background: rgba(218, 215, 207, 0.2);
+    border-radius: 10px;
+    position: relative;
+    padding: 2px;
 }
 
-/* Loading and Error Styles */
-.loading,
-.error,
-.placeholder {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  text-align: center;
-  font-size: 18px;
-  color: #7f8c8d;
+.switch-thumb {
+    width: 16px;
+    height: 16px;
+    background: #dad7cf;
+    border-radius: 50%;
+    position: absolute;
+    transition: transform 0.3s ease;
 }
 
-.error {
-  color: #e74c3c;
+/* Light Theme */
+.light {
+    background: #dad7cf;
+    color: #050b15;
 }
 
-/* Scrollbar Styles */
-.timetable-items-container::-webkit-scrollbar {
-  width: 8px;
+.light .header {
+    background: #dad7cf;
+    border-bottom-color: rgba(5, 11, 21, 0.1);
 }
 
-.timetable-items-container::-webkit-scrollbar-track {
-  background: #2c3e50;
+.light .sidebar {
+    background: #dad7cf;
+    border-right-color: rgba(5, 11, 21, 0.1);
 }
 
-.timetable-items-container::-webkit-scrollbar-thumb {
-  background: #3498db;
-  border-radius: 4px;
+.light .view-options h3,
+.light .timetable-items-container h4 {
+    color: #050b15;
+    border-bottom-color: rgba(5, 11, 21, 0.1);
 }
 
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-  .timetable-layout {
-    flex-direction: column;
-  }
+.light .view-type-selector button {
+    background: #050b15;
+    color: #dad7cf;
+}
 
-  .sidebar {
+.light .view-type-selector button.active {
+    background: #000000;
+    color: #dad7cf;
+}
+
+.light .timetable-item {
+    background: rgba(5, 11, 21, 0.05);
+    color: #050b15;
+}
+
+.light .timetable-item:hover {
+    background: rgba(5, 11, 21, 0.1);
+}
+
+.light .timetable-item.selected {
+    background: #050b15;
+    color: #dad7cf;
+}
+
+.light .selected-timetable-container {
+    background: #dad7cf;
+    border-color: rgba(5, 11, 21, 0.1);
+}
+
+.light .timetable-header {
+    background: #dad7cf;
+}
+
+.light .timetable-header h2 {
+    color: #050b15;
+}
+
+.light .download-btn {
+    background: #050b15;
+    color: #dad7cf;
+}
+
+.light .timetable {
+    background: #dad7cf;
+}
+
+.light .timetable th,
+.light .timetable td {
+    border-color: rgba(5, 11, 21, 0.1);
+    color: #050b15;
+}
+
+.light .filled-slot {
+    background: rgba(5, 11, 21, 0.05);
+}
+
+.light .empty-slot {
+    color: rgba(5, 11, 21, 0.5);
+}
+
+.light .theme-switch .switch-track {
+    background: rgba(5, 11, 21, 0.2);
+}
+
+.light .switch-thumb {
+    background: #050b15;
+    transform: translateX(20px);
+}
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(218, 215, 207, 0.05);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(218, 215, 207, 0.2);
+    border-radius: 5px;
+    border: 2px solid rgba(218, 215, 207, 0.05);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(218, 215, 207, 0.3);
+}
+
+.light ::-webkit-scrollbar-track {
+    background: rgba(5, 11, 21, 0.05);
+}
+
+.light ::-webkit-scrollbar-thumb {
+    background: rgba(5, 11, 21, 0.2);
+    border-color: rgba(5, 11, 21, 0.05);
+}
+
+/* Firefox Scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(218, 215, 207, 0.2) rgba(218, 215, 207, 0.05);
+}
+
+.light * {
+    scrollbar-color: rgba(5, 11, 21, 0.2) rgba(5, 11, 21, 0.05);
+}
+/* Sidebar Items */
+.timetable-item {
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    color: #dad7cf;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.2s;
+    background: rgba(218, 215, 207, 0.05);
+}
+
+.timetable-item:hover {
+    background: rgba(218, 215, 207, 0.1);
+}
+
+/* Dark mode selected state */
+.timetable-item.selected {
+    background: rgba(218, 215, 207, 0.2); /* Updated to match the second image */
+}
+/* View Type Selector buttons */
+.view-type-selector button {
     width: 100%;
-    max-height: 300px;
-  }
-
-  .selected-timetable-container {
-    padding: 10px;
-  }
-
-  .timetable {
-    min-width: 100%;
-  }
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    background: #dad7cf;
+    color: #050b15;
+    border: none;
+    border-radius: 4px;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
 }
 
-/* Dark Mode Styles */
-.view-timetables-page.dark {
-  background-color: #2c3e50; /* Similar to light mode sidebar color */
-  color: #ecf0f1; /* Light text for contrast */
+.view-type-selector button.active {
+    background: #ffffff;
+}
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .timetable-layout {
+        gap: 20px;
+        padding: 15px;
+    }
+    
+    .sidebar {
+        width: 250px;
+    }
 }
 
-.view-timetables-page.dark .timetables-header {
-  background-color: #233240; /* Slightly darker version of sidebar */
-  color: #ecf0f1;
-}
+@media (max-width: 768px) {
+    .timetable-layout {
+        flex-direction: column;
+    }
 
-.view-timetables-page.dark .sidebar {
-  background-color: #233240;
-  border-right-color: #34495e;
-}
+    .sidebar {
+        width: 100%;
+        max-height: 300px;
+    }
 
-.view-timetables-page.dark .view-options h3 {
-  border-bottom-color: #3498db;
-  color: #ecf0f1;
-}
+    .timetable-content {
+        max-height: calc(100vh - 450px);
+    }
 
-.view-timetables-page.dark .view-type-selector button {
-  background-color: #34495e;
-  border-color: #3498db;
-  color: #ecf0f1;
-}
+    .header {
+        padding: 15px 20px;
+    }
 
-.view-timetables-page.dark .view-type-selector button.active {
-  background-color: #3498db;
-  color: white;
-}
-
-.view-timetables-page.dark .timetable-item {
-  background-color: #34495e;
-  color: #ecf0f1;
-}
-
-.view-timetables-page.dark .timetable-item:hover {
-  background-color: #3498db;
-}
-
-.view-timetables-page.dark .timetable-item.selected {
-  background-color: #2ecc71; /* Keeping the green selection */
-  color: white;
-}
-
-.view-timetables-page.dark .timetable-content {
-  background-color: #233240;
-}
-
-.view-timetables-page.dark .selected-timetable-container {
-  background-color: #1c1c1c;
-  color: #ecf0f1;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-}
-
-.view-timetables-page.dark .timetable {
-  color: #ecf0f1;
-}
-
-.view-timetables-page.dark .timetable thead {
-  background-color: #3498db;
-  color: white;
-}
-
-.view-timetables-page.dark .timetable th,
-.view-timetables-page.dark .timetable td {
-  border-color: #455a6f;
-}
-
-.view-timetables-page.dark .timetable .time-slot {
-  background-color: #2c3e50;
-  color: #ecf0f1;
-}
-
-.view-timetables-page.dark .timetable .special-row {
-  background-color: #233240;
-}
-
-.view-timetables-page.dark .timetable .break-slot {
-  background-color: #34495e;
-  color: #ecf0f1;
-}
-
-.view-timetables-page.dark .timetable .filled-slot {
-  background-color: #13181c;
-  color: white;
-}
-
-.view-timetables-page.dark .timetable .empty-slot {
-  background-color: #233240;
-  color: #7f8c8d;
-}
-
-.view-timetables-page.dark .loading,
-.view-timetables-page.dark .error,
-.view-timetables-page.dark .placeholder {
-  color: #ecf0f1;
-}
-.timetable-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.download-btn {
-  background-color: #3498db;
-  color: white;
-  border: none;
-  padding: 8px 15px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.download-btn:hover {
-  background-color: #2980b9;
-}
-
-/* Dark mode styles for download button */
-.view-timetables-page.dark .download-btn {
-  background-color: #4a9eff;
-  color: white;
-}
-
-.view-timetables-page.dark .download-btn:hover {
-  background-color: #3a8fdf;
+    .back-button {
+        margin: 15px 0 0 20px;
+    }
 }
