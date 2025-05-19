@@ -1,0 +1,10 @@
+Flask
+flask-cors
+fastapi
+uvicorn
+SQLAlchemy
+mysql-connector-python
+pandas
+python-dotenv
+bcrypt
+pydantic
