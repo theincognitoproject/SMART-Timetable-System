@@ -1,0 +1,455 @@
+.generate-timetable-container {
+    min-height: 100vh;
+    transition: all 0.5s ease;
+  }
+  
+  .dark {
+    background: linear-gradient(135deg, #050b15, #080f1a, #050b16);
+    color: #dad7cf;
+  }
+  
+  .light {
+    background: linear-gradient(135deg, #dad7cf, #e5e2da, #dad7cf);
+    color: #050b15;
+  }
+  
+  /* Header Styles */
+  .header {
+    padding: 15px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 10;
+  }
+  
+  .logo-section {
+    display: flex;
+    align-items: center;
+  }
+  
+  .logo {
+    height: 40px;
+    width: auto;
+    transition: transform 0.3s ease;
+    cursor: pointer;
+  }
+  
+  .logo:hover {
+    transform: scale(1.1);
+    filter: brightness(1.2);
+  }
+  
+  /* Divider */
+  .divider {
+    height: 1px;
+    width: 100%;
+    transition: background-color 0.3s ease;
+    margin-top: -5px;
+  }
+  
+  .dark .divider {
+    background: rgba(218, 215, 207, 0.3);
+  }
+  
+  .light .divider {
+    background: rgba(5, 11, 21, 0.3);
+  }
+  
+  /* Main Content */
+  .main-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 70px;
+  }
+  
+  .title-section {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  
+  .title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 44px;
+    font-weight: 400;
+    margin-bottom: 20px;
+  }
+  
+  .subtitle {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    font-weight: 400;
+    opacity: 0.8;
+  }
+  
+  /* File Upload Section */
+  .file-upload-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: 30px;
+  }
+  
+  .file-upload-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+  
+  .file-input {
+    display: none;
+  }
+  
+  .file-upload-label {
+    width: 100%;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    text-align: center;
+  }
+  
+  .dark .file-upload-label {
+    background: #dad7cf;
+    color: #050b15;
+    box-shadow: 0 0 15px rgba(218, 215, 207, 0.2);
+  }
+  
+  .light .file-upload-label {
+    background: #050b15;
+    color: #dad7cf;
+    box-shadow: 0 0 15px rgba(5, 11, 21, 0.2);
+  }
+  
+  .file-upload-label.uploaded {
+    background: #2ecc71;
+    color: white;
+  }
+  
+  .file-upload-label:hover {
+    transform: translateY(-3px);
+  }
+  
+  .file-name {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  /* Buttons */
+  .buttons-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 20px;
+  }
+  
+  .action-button {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+  
+  .dark .action-button {
+    background: #dad7cf;
+    color: #050b15;
+    box-shadow: 0 0 15px rgba(218, 215, 207, 0.2);
+  }
+  
+  .light .action-button {
+    background: #050b15;
+    color: #dad7cf;
+    box-shadow: 0 0 15px rgba(5, 11, 21, 0.2);
+  }
+  
+  .action-button:hover {
+    transform: translateY(-3px);
+  }
+  
+  .action-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .button-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      45deg,
+      transparent,
+      rgba(0, 0, 0, 0.2),
+      transparent
+    );
+    opacity: 0;
+    transition: all 0.3s ease;
+  }
+  
+  .action-button:hover .button-glow {
+    opacity: 1;
+  }
+  
+  /* Back Button */
+  .back-button {
+    position: absolute;
+    top: 20px;
+    left: 40px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  /* Generation Status */
+  .generation-status {
+    margin-top: 20px;
+    text-align: center;
+  }
+  
+  .status-message {
+    font-size: 18px;
+    font-weight: 500;
+  }
+  
+  .status-message.error {
+    color: #e74c3c;
+  }
+  
+  .status-message.success {
+    color: #2ecc71;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .main-content {
+      padding: 20px;
+    }
+  
+    .title {
+      font-size: 36px;
+    }
+  
+    .subtitle {
+      font-size: 22px;
+    }
+  
+    .file-upload-section {
+      max-width: 100%;
+    }
+  
+    .back-button {
+      position: relative;
+      top: 0;
+      left: 0;
+      margin-bottom: 20px;
+    }
+  }
+  .validation-results {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: rgba(0,0,0,0.05);
+    border-radius: 8px;
+  }
+  
+  .success {
+    color: green;
+  }
+  
+  .error {
+    color: red;
+  }
+  
+  .clash-item {
+    background-color: rgba(255,0,0,0.1);
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 5px;
+  }
+  .generate-timetable-container {
+    min-height: 100vh;
+    overflow-y: auto; /* Enable vertical scrolling */
+    max-height: 100vh;
+    position: relative;
+  }
+  
+  .main-content {
+    overflow-y: auto;
+    max-height: calc(100vh - 100px); /* Adjust based on header height */
+    padding-bottom: 50px; /* Add some bottom padding */
+  }
+  
+  /* Ensure long content can scroll */
+  .validation-results,
+  .timetable-preview {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+/* Section Configuration Styles */
+.section-config {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto 30px;
+  padding: 20px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.dark .section-config {
+  background: rgba(218, 215, 207, 0.05);
+  box-shadow: 0 0 15px rgba(218, 215, 207, 0.1);
+}
+
+.light .section-config {
+  background: rgba(5, 11, 21, 0.05);
+  box-shadow: 0 0 15px rgba(5, 11, 21, 0.1);
+}
+
+.section-config h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  font-weight: 400;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.section-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.year-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.year-section label {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.input-with-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+}
+
+.control-button {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dark .control-button {
+  background: #dad7cf;
+  color: #050b15;
+  box-shadow: 0 0 15px rgba(218, 215, 207, 0.1);
+}
+
+.light .control-button {
+  background: #050b15;
+  color: #dad7cf;
+  box-shadow: 0 0 15px rgba(5, 11, 21, 0.1);
+}
+
+.control-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.control-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.year-section input {
+  width: 60px;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.dark .year-section input {
+  background: #dad7cf;
+  color: #050b15;
+  box-shadow: 0 0 15px rgba(218, 215, 207, 0.1);
+}
+
+.light .year-section input {
+  background: #050b15;
+  color: #dad7cf;
+  box-shadow: 0 0 15px rgba(5, 11, 21, 0.1);
+}
+
+.section-preview {
+  text-align: center;
+  font-size: 0.9rem;
+  opacity: 0.8;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.dark .section-preview {
+  background: rgba(218, 215, 207, 0.05);
+}
+
+.light .section-preview {
+  background: rgba(5, 11, 21, 0.05);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .section-config {
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+
+  .section-config h2 {
+    font-size: 22px;
+  }
+
+  .year-section label {
+    font-size: 14px;
+  }
+
+  .control-button, 
+  .year-section input {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+
+  .section-preview {
+    font-size: 0.8rem;
+  }
+}

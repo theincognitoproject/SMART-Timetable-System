@@ -1,0 +1,543 @@
+/* LandingPage.css */
+.landing-container {
+  min-height: 100vh;
+  transition: all 0.5s ease;
+}
+
+.dark {
+  background: linear-gradient(135deg, #050b15, #080f1a, #050b16);
+  color: #dad7cf;
+}
+
+.light {
+  background: linear-gradient(135deg, #dad7cf, #e5e2da, #dad7cf);
+  color: #050b15;
+}
+
+/* Header Styles */
+.header {
+  padding: 15px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  height: 40px;
+  width: auto;
+  transition: transform 0.3s ease;
+  cursor: pointer;
+}
+
+.logo:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+/* Divider line */
+.divider {
+  height: 1px;
+  width: 100%;
+  transition: background-color 0.3s ease;
+  margin-top: -5px;
+}
+
+.dark .divider {
+  background: rgba(218, 215, 207, 0.3);
+}
+
+.light .divider {
+  background: rgba(5, 11, 21, 0.3);
+}
+
+/* Theme Switch */
+.theme-switch-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.theme-switch {
+  cursor: pointer;
+  padding: 5px;
+}
+
+.switch-track {
+  width: 60px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  padding: 3px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.switch-thumb {
+  width: 24px;
+  height: 24px;
+  background: #ffffff;
+  border-radius: 50%;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.light .switch-track {
+  background: rgba(5, 11, 21, 0.2);
+}
+
+.light .switch-thumb {
+  transform: translateX(30px);
+  background: #150505;
+}
+
+.dark .switch-thumb {
+  transform: translateX(0);
+  background: #ffffff;
+}
+
+
+/* Main Content */
+.main-content {
+  display: flex;
+  height: calc(100vh - 65px);
+  position: relative;
+  overflow: hidden;
+}
+
+.content-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 70px;
+  padding-right: 10px;
+  z-index: 2;
+}
+
+.text-container {
+  margin-bottom: 40px;
+}
+
+.welcome-text {
+  font-family: 'DM Serif Display', serif;
+  font-size: 44px;
+  font-weight: 400;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.subtitle {
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1.4;
+  opacity: 0;
+  animation: fadeIn 0.8s ease forwards;
+  max-width: 1000px;
+}
+
+.cursor {
+  animation: blink 1s step-end infinite;
+}
+
+.button-group {
+  display: flex;
+  gap: 30px;
+  opacity: 0;
+  animation: slideInFromBottom 0.8s ease forwards 1.5s;
+}
+
+.action-button {
+  padding: 12px 25px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.dark .action-button {
+  background: #dad7cf;
+  color: #050b15;
+  box-shadow: 0 0 15px rgba(218, 215, 207, 0.2);
+}
+
+.light .action-button {
+  background: #050b15;
+  color: #dad7cf;
+  box-shadow: 0 0 15px rgba(5, 11, 21, 0.2);
+}
+
+.dark .action-button:hover {
+  background: #ffffff;
+  transform: translateY(-3px);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.light .action-button:hover {
+  background: #000000;
+  transform: translateY(-3px);
+  box-shadow: 0 0 20px rgba(26, 26, 26, 1);
+}
+
+.button-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(0, 0, 0, 0.2),
+    transparent
+  );
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.action-button:hover .button-glow {
+  opacity: 1;
+}
+
+.content-right {
+  flex: 2.8;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.device-container {
+  position: relative;
+  width: 93%;
+  height: 20%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.ipad-preview {
+  position: relative;
+  right: -20%;
+  bottom: -8%;
+  width: 150%;
+  height: auto;
+  opacity: 0;
+  animation: slideInFromRight 1s ease forwards 0.5s;
+}
+
+/* Animations */
+@keyframes ripple {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.5;
+  }
+  100% {
+    width: 200%;
+    height: 200%;
+    opacity: 0;
+  }
+}
+
+@keyframes blink {
+  from, to { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1400px) {
+  .content-left {
+    padding-left: 100px;
+    padding-right: 30px;
+  }
+  
+  .device-container {
+    width: 150%;
+  }
+  
+  .ipad-preview {
+    width: 170%;
+    right: -15%;
+  }
+}
+
+@media (max-width: 1200px) {
+  .content-left {
+    padding-left: 80px;
+    padding-right: 25px;
+  }
+
+  .welcome-text {
+    font-size: 42px;
+  }
+
+  .subtitle {
+    font-size: 28px;
+  }
+
+  .device-container {
+    width: 120%;
+  }
+
+  .ipad-preview {
+    width: 120%;
+    right: -10%;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    flex-direction: column;
+    height: auto;
+    padding: 40px 20px;
+  }
+
+  .content-left {
+    padding: 0 20px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .welcome-text {
+    font-size: 36px;
+  }
+
+  .subtitle {
+    font-size: 24px;
+  }
+
+  .device-container {
+    margin-top: 40px;
+    height: auto;
+    width: 100%;
+  }
+
+  .ipad-preview {
+    position: relative;
+    right: 0;
+    width: 130%;
+    margin: 0 auto;
+  }
+
+  .button-group {
+    flex-direction: column;
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .action-button {
+    padding: 10px 20px;
+    font-size: 15px;
+  }
+}
+/* Settings Button and Dropdown */
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.settings-wrapper {
+  position: relative;
+}
+
+.settings-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 5px;
+  transition: transform 0.3s ease;
+}
+
+.settings-button:hover {
+  transform: rotate(90deg);
+}
+
+.settings-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: rgba(13, 25, 45, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 150px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  animation: fadeIn 0.3s ease;
+}
+
+.settings-dropdown button {
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  color: #dad7cf;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.settings-dropdown button:hover {
+  background: rgba(218, 215, 207, 0.1);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+  background: rgba(13, 25, 45, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 30px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  animation: slideInFromTop 0.3s ease;
+}
+
+.modal-content h2 {
+  color: #dad7cf;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.modal-input-group {
+  margin-bottom: 15px;
+}
+
+.modal-input-group input {
+  width: 100%;
+  padding: 12px;
+  background: rgba(218, 215, 207, 0.1);
+  border: 1px solid rgba(218, 215, 207, 0.2);
+  border-radius: 6px;
+  color: #dad7cf;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-buttons button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.modal-buttons button:first-child {
+  background: #4CAF50;
+  color: white;
+}
+
+.modal-buttons button:last-child {
+  background: #f44336;
+  color: white;
+}
+
+.modal-buttons button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.error-message {
+  color: #f44336;
+  margin-bottom: 15px;
+  text-align: center;
+  font-size: 14px;
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.success-message {
+  color: #4CAF50;
+  background-color: rgba(76, 175, 80, 0.1);
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.modal-input-group input {
+  width: 100%;
+  padding: 12px;
+  background: rgba(218, 215, 207, 0.1);
+  border: 1px solid rgba(218, 215, 207, 0.2);
+  border-radius: 6px;
+  color: #dad7cf;
+  margin-bottom: 10px;
+}
+
+.modal-input-group input:focus {
+  outline: none;
+  border-color: rgba(24, 144, 255, 0.3);
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}

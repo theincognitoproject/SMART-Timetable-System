@@ -1,0 +1,548 @@
+.create-timetable-container {
+  min-height: 100vh;
+  transition: all 0.5s ease;
+}
+
+.dark {
+  background: linear-gradient(135deg, #050b15, #080f1a, #050b16);
+  color: #dad7cf;
+}
+
+.light {
+  background: linear-gradient(135deg, #dad7cf, #e5e2da, #dad7cf);
+  color: #050b15;
+}
+
+/* Header Styles */
+.header {
+  padding: 15px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  height: 40px;
+  width: auto;
+  transition: transform 0.3s ease;
+  cursor: pointer;
+}
+
+.logo:hover {
+  transform: scale(1.1);
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  width: 100%;
+  transition: background-color 0.3s ease;
+  margin-top: -5px;
+}
+
+.dark .divider {
+  background: rgba(218, 215, 207, 0.3);
+}
+
+.light .divider {
+  background: rgba(5, 11, 21, 0.3);
+}
+.theme-switch-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.theme-switch {
+  cursor: pointer;
+  padding: 5px;
+}
+
+.switch-track {
+  width: 60px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  padding: 3px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.switch-thumb {
+  width: 24px;
+  height: 24px;
+  background: #ffffff;
+  border-radius: 50%;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.light .switch-track {
+  background: rgba(5, 11, 21, 0.2);
+}
+
+.light .switch-thumb {
+  transform: translateX(30px);
+  background: #050b15;
+}
+
+.dark .switch-thumb {
+  transform: translateX(0);
+  background: #ffffff;
+}
+/* Main Content */
+.main-content {
+  padding: 20px 40px;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 81px);
+  position: relative;
+}
+
+/* Back Button */
+.back-button {
+  position: absolute;           
+  top: 15px; /* Just below divider */
+  left: 10px;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+  width: fit-content;
+  text-align: center; /* Ensures text is centered */
+  display: flex; /* Centers text properly */
+  justify-content: center;
+  align-items: center;
+}
+
+.dark .back-button {
+  background: #dad7cf;
+  color: #050b15;
+  box-shadow: 0 0 15px rgba(218, 215, 207, 0.2);
+}
+
+.light .back-button {
+  background: #050b15;
+  color: #dad7cf;
+  box-shadow: 0 0 15px rgba(5, 11, 21, 0.2);
+}
+
+.dark .back-button:hover {
+  background: #ffffff;
+  transform: translateY(-3px);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.light .back-button:hover {
+  background: #000000;
+  transform: translateY(-3px);
+  box-shadow: 0 0 20px rgba(26, 26, 26, 1);
+}
+
+.title-section {
+  margin-top: 50px; /* Space below back button */
+  margin-bottom: 40px;
+  padding-left: 40px; /* Align with back button */
+}
+
+.title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 32px;
+  font-weight: 400;
+}
+
+.cursor {
+  animation: blink 1s step-end infinite;
+}
+
+/* Departments Container */
+.departments-container {
+  width: 80%;
+  margin: 0 auto;
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 300px;
+  position: relative;
+  margin-bottom: 20px; /* Reduced to bring create button closer */
+}
+
+.dark .departments-container {
+  background: #dad7cf;
+  color: #050b15;
+}
+
+.light .departments-container {
+  background: #050b15;
+  color: #dad7cf;
+}
+
+.departments-list {
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.no-departments {
+  text-align: center;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+}
+
+.dark .no-departments {
+  color: #050b15;
+}
+
+.light .no-departments {
+  color: #dad7cf;
+}
+
+/* Scrollbar Styles */
+.departments-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.departments-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.departments-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+/* Buttons Container */
+.buttons-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  margin-top: -5px;
+}
+
+/* Create Department Button */
+.create-dept {
+  width: 80%;  /* Make button width same as container */
+  margin: 0 auto; /* Center the button */
+  margin-bottom: 100px; /* Keep existing spacing */
+  display: block; /* Ensure it takes full width */
+}
+
+/* Generate Button */
+.generate {
+  position: fixed; /* Changed to fixed for consistent bottom positioning */
+  bottom: 20px;
+  right: -600px;
+}
+
+/* Common Button Styles */
+.action-button {
+  padding: 12px 25px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.dark .action-button {
+  background: #dad7cf;
+  color: #050b15;
+  box-shadow: 0 0 15px rgba(218, 215, 207, 0.2);
+}
+
+.light .action-button {
+  background: #050b15;
+  color: #dad7cf;
+  box-shadow: 0 0 15px rgba(5, 11, 21, 0.2);
+}
+
+.dark .action-button:hover {
+  background: #ffffff;
+  transform: translateY(-3px);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.light .action-button:hover {
+  background: #000000;
+  transform: translateY(-3px);
+  box-shadow: 0 0 20px rgba(26, 26, 26, 1);
+}
+
+.button-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(0, 0, 0, 0.2),
+    transparent
+  );
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.action-button:hover .button-glow {
+  opacity: 1;
+}
+
+@keyframes blink {
+  from, to { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 20px;
+  }
+
+  .back-button {
+    left: 20px;
+  }
+
+  .title-section {
+    padding-left: 20px;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .departments-container {
+    width: 95%;
+  }
+
+  .buttons-container {
+    padding: 0 20px;
+  }
+
+  .create-dept {
+    width: 100%;
+    margin-bottom: 30px;
+  }
+
+  .generate {
+    position: static;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 10px 20px;
+  }
+
+  .logo {
+    height: 30px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .action-button {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+}
+
+/* Add these styles to your existing CreateTimetable.css */
+
+.departments-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.departments-table th,
+.departments-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .departments-table th,
+.dark .departments-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.light .departments-table th,
+.light .departments-table td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.departments-table th {
+  font-weight: bold;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark .departments-table th {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.light .departments-table th {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.departments-table tr:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.view-table-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+}
+
+.dark .view-table-button {
+  color: #dad7cf;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.light .view-table-button {
+  color: #050b15;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.view-table-button:hover {
+  transform: scale(1.1);
+}
+
+.dark .view-table-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.light .view-table-button:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.view-table-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.department-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.loading-indicator {
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+  color: #888;
+}
+
+.dark .loading-indicator {
+  color: #aaa;
+}
+
+.button-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.generate:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Add this to your CreateTimetable.css file */
+.download {
+  position: fixed;
+  bottom: 20px;
+  left: 40px;
+}
+
+/* Button spinner for download in progress */
+.action-button .button-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s linear infinite;
+  margin-right: 8px; /* Add some space between spinner and text */
+  vertical-align: middle;
+}
+
+.dark .action-button .button-spinner {
+  border: 2px solid rgba(5, 11, 21, 0.3);
+  border-top-color: #050b15;
+}
+
+.light .action-button .button-spinner {
+  border: 2px solid rgba(218, 215, 207, 0.3);
+  border-top-color: #dad7cf;
+}
+.action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.dark .action-button:disabled:hover,
+.light .action-button:disabled:hover {
+  transform: none !important;
+  box-shadow: none;
+  background: inherit;
+}
+
+/* Make sure downloads are properly spaced on smaller screens */
+@media (max-width: 768px) {
+  .download {
+    position: static;
+    width: 100%;
+    margin-bottom: 15px;
+  }
+}
+
+/* Animation for the spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

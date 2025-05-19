@@ -1,0 +1,406 @@
+/* Base Styles */
+.view-timetables-page {
+    min-height: 100vh;
+    background: #050b15;
+    color: #dad7cf;
+    overflow: hidden;
+}
+
+/* Header */
+.header {
+    width: 100%;
+    background: #050b15;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(218, 215, 207, 0.1);
+}
+
+.logo-section {
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    height: 35px;
+    width: auto;
+}
+
+/* Back Button */
+.back-button {
+    margin: 15px;
+    padding: 8px 16px;
+    background: #dad7cf;
+    color: #050b15;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* Main Layout */
+.timetable-layout {
+    display: flex;
+    height: calc(100vh - 100px);
+    padding: 20px;
+    gap: 30px;
+}
+/* Sidebar */
+.sidebar {
+    width: 280px;
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+    max-height: calc(100vh - 120px);
+    background: #050b15;
+    border-right: 1px solid rgba(218, 215, 207, 0.1);
+}
+
+.view-options h3 {
+    color: #dad7cf;
+    font-size: 24px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(218, 215, 207, 0.1);
+}
+
+/* View Type Selector */
+.view-type-selector {
+    margin-bottom: 25px;
+}
+
+/* View All Button */
+.view-all-button {
+    width: 100%;
+    padding: 12px 15px;
+    margin-top: 10px;
+    background: #3498db !important;
+    color: #dad7cf !important;
+    border: none;
+    border-radius: 4px;
+    text-align: center !important;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.view-all-button:hover {
+    opacity: 0.9;
+}
+
+.view-all-button.active {
+    background: #2980b9 !important;
+}
+/* Timetable Items Container */
+.timetable-items-container {
+    margin-top: 20px;
+    padding-right: 10px;
+    overflow-y: auto;
+    max-height: calc(100vh - 300px);
+}
+
+.timetable-items-container h4 {
+    color: #dad7cf;
+    margin: 20px 0 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(218, 215, 207, 0.1);
+    font-size: 18px;
+}
+/* Timetable Content */
+.timetable-content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    max-height: calc(100vh - 120px);
+}
+
+.selected-timetable-container {
+    background: #050b15;
+    border-radius: 8px;
+    border: 1px solid rgba(218, 215, 207, 0.1);
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+
+/* Timetable Header */
+.timetable-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: #050b15;
+    border-bottom: 1px solid rgba(218, 215, 207, 0.1);
+}
+
+.timetable-header h2 {
+    color: #dad7cf;
+    font-size: 20px;
+    font-weight: normal;
+}
+
+.download-btn {
+    padding: 8px 16px;
+    background: #dad7cf;
+    color: #050b15;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Table Styles */
+.timetable {
+    width: 100%;
+    border-collapse: collapse;
+    background: #050b15;
+}
+
+.timetable th,
+.timetable td {
+    padding: 15px;
+    text-align: center;
+    border: 1px solid rgba(218, 215, 207, 0.1);
+    color: #dad7cf;
+}
+
+.time-slot {
+    font-weight: normal;
+    color: #dad7cf;
+}
+
+.break-slot,
+.lunch-slot {
+    color: #dad7cf;
+    font-weight: bold;
+}
+
+.filled-slot {
+    background: rgba(218, 215, 207, 0.05);
+}
+
+.empty-slot {
+    color: rgba(218, 215, 207, 0.5);
+}
+/* Theme Switch */
+.theme-switch {
+    margin-left: auto;
+    padding: 5px;
+    cursor: pointer;
+}
+
+.switch-track {
+    width: 40px;
+    height: 20px;
+    background: rgba(218, 215, 207, 0.2);
+    border-radius: 10px;
+    position: relative;
+    padding: 2px;
+}
+
+.switch-thumb {
+    width: 16px;
+    height: 16px;
+    background: #dad7cf;
+    border-radius: 50%;
+    position: absolute;
+    transition: transform 0.3s ease;
+}
+
+/* Light Theme */
+.light {
+    background: #dad7cf;
+    color: #050b15;
+}
+
+.light .header {
+    background: #dad7cf;
+    border-bottom-color: rgba(5, 11, 21, 0.1);
+}
+
+.light .sidebar {
+    background: #dad7cf;
+    border-right-color: rgba(5, 11, 21, 0.1);
+}
+
+.light .view-options h3,
+.light .timetable-items-container h4 {
+    color: #050b15;
+    border-bottom-color: rgba(5, 11, 21, 0.1);
+}
+
+.light .view-type-selector button {
+    background: #050b15;
+    color: #dad7cf;
+}
+
+.light .view-type-selector button.active {
+    background: #000000;
+    color: #dad7cf;
+}
+
+.light .timetable-item {
+    background: rgba(5, 11, 21, 0.05);
+    color: #050b15;
+}
+
+.light .timetable-item:hover {
+    background: rgba(5, 11, 21, 0.1);
+}
+
+.light .timetable-item.selected {
+    background: #050b15;
+    color: #dad7cf;
+}
+
+.light .selected-timetable-container {
+    background: #dad7cf;
+    border-color: rgba(5, 11, 21, 0.1);
+}
+
+.light .timetable-header {
+    background: #dad7cf;
+}
+
+.light .timetable-header h2 {
+    color: #050b15;
+}
+
+.light .download-btn {
+    background: #050b15;
+    color: #dad7cf;
+}
+
+.light .timetable {
+    background: #dad7cf;
+}
+
+.light .timetable th,
+.light .timetable td {
+    border-color: rgba(5, 11, 21, 0.1);
+    color: #050b15;
+}
+
+.light .filled-slot {
+    background: rgba(5, 11, 21, 0.05);
+}
+
+.light .empty-slot {
+    color: rgba(5, 11, 21, 0.5);
+}
+
+.light .theme-switch .switch-track {
+    background: rgba(5, 11, 21, 0.2);
+}
+
+.light .switch-thumb {
+    background: #050b15;
+    transform: translateX(20px);
+}
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(218, 215, 207, 0.05);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(218, 215, 207, 0.2);
+    border-radius: 5px;
+    border: 2px solid rgba(218, 215, 207, 0.05);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(218, 215, 207, 0.3);
+}
+
+.light ::-webkit-scrollbar-track {
+    background: rgba(5, 11, 21, 0.05);
+}
+
+.light ::-webkit-scrollbar-thumb {
+    background: rgba(5, 11, 21, 0.2);
+    border-color: rgba(5, 11, 21, 0.05);
+}
+
+/* Firefox Scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(218, 215, 207, 0.2) rgba(218, 215, 207, 0.05);
+}
+
+.light * {
+    scrollbar-color: rgba(5, 11, 21, 0.2) rgba(5, 11, 21, 0.05);
+}
+/* Sidebar Items */
+.timetable-item {
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    color: #dad7cf;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.2s;
+    background: rgba(218, 215, 207, 0.05);
+}
+
+.timetable-item:hover {
+    background: rgba(218, 215, 207, 0.1);
+}
+
+/* Dark mode selected state */
+.timetable-item.selected {
+    background: rgba(218, 215, 207, 0.2); /* Updated to match the second image */
+}
+/* View Type Selector buttons */
+.view-type-selector button {
+    width: 100%;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    background: #dad7cf;
+    color: #050b15;
+    border: none;
+    border-radius: 4px;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.view-type-selector button.active {
+    background: #ffffff;
+}
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .timetable-layout {
+        gap: 20px;
+        padding: 15px;
+    }
+    
+    .sidebar {
+        width: 250px;
+    }
+}
+
+@media (max-width: 768px) {
+    .timetable-layout {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        max-height: 300px;
+    }
+
+    .timetable-content {
+        max-height: calc(100vh - 450px);
+    }
+
+    .header {
+        padding: 15px 20px;
+    }
+
+    .back-button {
+        margin: 15px 0 0 20px;
+    }
+}
