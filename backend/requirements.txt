@@ -8,3 +8,5 @@ pandas
 python-dotenv
 bcrypt
 pydantic
+mysqlclient
+python-multipart
