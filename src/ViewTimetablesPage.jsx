@@ -14,7 +14,13 @@ const PREDEFINED_SLOTS = [
 
 const PREDEFINED_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-const ViewTimetablesPage = ({ onBack, isDarkMode, toggleTheme }) => {
+const ViewTimetablesPage = ({ 
+  onBack, 
+  isDarkMode, 
+  toggleTheme,
+  timetableSchema, // Added prop for specific timetable schema
+  onError 
+}) => {
   const [viewType, setViewType] = useState('Class Timetables');
   const [timetableData, setTimetableData] = useState({
     classes: [],
@@ -25,25 +31,62 @@ const ViewTimetablesPage = ({ onBack, isDarkMode, toggleTheme }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isViewingAll, setIsViewingAll] = useState(false);
+  const [schemaName, setSchemaName] = useState(null);
 
   // Fetch timetable data
   const loadTimetableData = async () => {
     try {
       setIsLoading(true);
-      const data = await fetchTimetables();
+      const data = await fetchTimetables(timetableSchema);
       setTimetableData(data);
+      
+      // Set schema name for display if we're viewing a specific schema
+      if (timetableSchema) {
+        setSchemaName(formatSchemaName(timetableSchema));
+      } else {
+        setSchemaName(null);
+      }
+      
       setError(null);
     } catch (err) {
       console.error('Timetable fetch error:', err);
       setError(`Failed to fetch timetables: ${err.message}`);
+      if (onError) onError(err);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Format schema name for display
+  const formatSchemaName = (name) => {
+    if (!name) return "";
+    
+    // Remove timetable_ prefix
+    let displayName = name.replace('timetable_', '');
+    
+    // If it's in the format YYYY_MM_DD_HH_MM_SS
+    const parts = displayName.split('_');
+    if (parts.length >= 6) {
+      try {
+        const [year, month, day, hour, minute, second] = parts;
+        const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}`);
+        return date.toLocaleString();
+      } catch (e) {
+        // If date parsing fails, just replace underscores with spaces
+        return displayName.replace(/_/g, ' ');
+      }
+    }
+    
+    return displayName.replace(/_/g, ' ');
+  };
+
   useEffect(() => {
     loadTimetableData();
-  }, []);
+    
+    // Reset selected timetables when schema changes
+    setSelectedTimetables([]);
+    setIsViewingAll(false);
+  }, [timetableSchema]);
 
   // Handle View All functionality
   const handleViewAll = () => {
@@ -137,6 +180,18 @@ const ViewTimetablesPage = ({ onBack, isDarkMode, toggleTheme }) => {
       titleCell.style.padding = '10px';
       titleCell.textContent = timetableTitle;
       
+      // Add schema name if available
+      if (schemaName) {
+        const schemaRow = table.insertRow();
+        const schemaCell = schemaRow.insertCell();
+        schemaCell.colSpan = PREDEFINED_DAYS.length + 1;
+        schemaCell.style.textAlign = 'center';
+        schemaCell.style.fontSize = '12px';
+        schemaCell.style.color = '#666666';
+        schemaCell.style.padding = '5px';
+        schemaCell.textContent = `Generated: ${schemaName}`;
+      }
+      
       // Add header row
       const headerRow = table.insertRow();
       const headerCells = ['Time', ...PREDEFINED_DAYS];
@@ -201,7 +256,12 @@ const ViewTimetablesPage = ({ onBack, isDarkMode, toggleTheme }) => {
         const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, '', 'FAST');
-        pdf.save(`${timetableTitle}_Timetable.pdf`);
+        
+        let filename = `${timetableTitle}_Timetable`;
+        if (schemaName) {
+          filename += `_${schemaName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        }
+        pdf.save(`${filename}.pdf`);
 
         document.body.removeChild(printContainer);
       }).catch(error => {
@@ -264,6 +324,11 @@ const ViewTimetablesPage = ({ onBack, isDarkMode, toggleTheme }) => {
             Download PDF
           </button>
         </div>
+        {schemaName && (
+          <div className="timetable-schema-info">
+            Generated: {schemaName}
+          </div>
+        )}
         <table className="timetable">
           <thead>
             <tr>
@@ -302,6 +367,11 @@ const ViewTimetablesPage = ({ onBack, isDarkMode, toggleTheme }) => {
     <div className="sidebar">
       <div className="view-options">
         <h3>View Timetables</h3>
+        {schemaName && (
+          <div className="schema-name">
+            {schemaName}
+          </div>
+        )}
         <div className="view-type-selector">
           {['Class Timetables', 'Venue Timetables', 'Teacher Timetables'].map(type => (
             <button 
@@ -328,61 +398,73 @@ const ViewTimetablesPage = ({ onBack, isDarkMode, toggleTheme }) => {
           {viewType === 'Class Timetables' && (
             <div className="class-sections">
               <h4>Sections</h4>
-              {timetableData.classes.map(cls => (
-                <div 
-                  key={`${cls.year}-${cls.section}`} 
-                  className={`timetable-item ${
-                    selectedTimetables.some(
-                      t => t.type === 'section' && 
-                      t.year === cls.year && 
-                      t.section === cls.section
-                    ) ? 'selected' : ''
-                  }`}
-                  onClick={() => toggleTimetableSelection('section', cls)}
-                >
-                  Year {cls.year} - Section {cls.section}
-                </div>
-              ))}
+              {timetableData.classes.length === 0 ? (
+                <div className="no-items-message">No class data available</div>
+              ) : (
+                timetableData.classes.map(cls => (
+                  <div 
+                    key={`${cls.year}-${cls.section}`} 
+                    className={`timetable-item ${
+                      selectedTimetables.some(
+                        t => t.type === 'section' && 
+                        t.year === cls.year && 
+                        t.section === cls.section
+                      ) ? 'selected' : ''
+                    }`}
+                    onClick={() => toggleTimetableSelection('section', cls)}
+                  >
+                    Year {cls.year} - Section {cls.section}
+                  </div>
+                ))
+              )}
             </div>
           )}
 
           {viewType === 'Venue Timetables' && (
             <div className="venues">
               <h4>Venues</h4>
-              {timetableData.venues.map(venue => (
-                <div 
-                  key={venue.venue_name} 
-                  className={`timetable-item ${
-                    selectedTimetables.some(
-                      t => t.type === 'venue' && 
-                      t.venue_name === venue.venue_name
-                    ) ? 'selected' : ''
-                  }`}
-                  onClick={() => toggleTimetableSelection('venue', venue)}
-                >
-                  {venue.venue_name}
-                </div>
-              ))}
+              {timetableData.venues.length === 0 ? (
+                <div className="no-items-message">No venue data available</div>
+              ) : (
+                timetableData.venues.map(venue => (
+                  <div 
+                    key={venue.venue_name} 
+                    className={`timetable-item ${
+                      selectedTimetables.some(
+                        t => t.type === 'venue' && 
+                        t.venue_name === venue.venue_name
+                      ) ? 'selected' : ''
+                    }`}
+                    onClick={() => toggleTimetableSelection('venue', venue)}
+                  >
+                    {venue.venue_name}
+                  </div>
+                ))
+              )}
             </div>
           )}
 
           {viewType === 'Teacher Timetables' && (
             <div className="teachers">
               <h4>Teachers</h4>
-              {timetableData.teachers.map(teacher => (
-                <div 
-                  key={teacher.teacher_name} 
-                  className={`timetable-item ${
-                    selectedTimetables.some(
-                      t => t.type === 'teacher' && 
-                      t.teacher_name === teacher.teacher_name
-                    ) ? 'selected' : ''
-                  }`}
-                  onClick={() => toggleTimetableSelection('teacher', teacher)}
-                >
-                  {teacher.teacher_name}
-                </div>
-              ))}
+              {timetableData.teachers.length === 0 ? (
+                <div className="no-items-message">No teacher data available</div>
+              ) : (
+                timetableData.teachers.map(teacher => (
+                  <div 
+                    key={teacher.teacher_name} 
+                    className={`timetable-item ${
+                      selectedTimetables.some(
+                        t => t.type === 'teacher' && 
+                        t.teacher_name === teacher.teacher_name
+                      ) ? 'selected' : ''
+                    }`}
+                    onClick={() => toggleTimetableSelection('teacher', teacher)}
+                  >
+                    {teacher.teacher_name}
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>

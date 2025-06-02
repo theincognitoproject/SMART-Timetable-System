@@ -7,6 +7,7 @@ const LandingPage = lazy(() => import('./LandingPage'));
 const CreateTimetable = lazy(() => import('./CreateTimetable'));
 const GenerateTimetable = lazy(() => import('./GenerateTimetable'));
 const ViewTimetablesPage = lazy(() => import('./ViewTimetablesPage'));
+const SavedTimetables = lazy(() => import('./SavedTimetables')); // Add the new component
 
 const ErrorFallback = ({ error, resetErrorBoundary }) => {
   return (
@@ -24,6 +25,7 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState('loading');
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedTimetableSchema, setSelectedTimetableSchema] = useState(null);
 
   useEffect(() => {
     const loadingTimer = setTimeout(() => {
@@ -84,11 +86,32 @@ function App() {
   };
 
   const handleViewTimetables = () => {
+    // First go to the saved timetables screen
+    setCurrentScreen('saved-timetables');
+  };
+
+  const handleViewSpecificTimetable = (schemaName) => {
+    // Set the selected schema and navigate to view-timetables
+    setSelectedTimetableSchema(schemaName);
     setCurrentScreen('view-timetables');
   };
 
   const handleBack = () => {
-    setCurrentScreen('landing');
+    // Handle back navigation based on current screen
+    switch (currentScreen) {
+      case 'saved-timetables':
+        setCurrentScreen('landing');
+        break;
+        
+      case 'view-timetables':
+        // Go back to saved timetables, not landing
+        setCurrentScreen('saved-timetables');
+        break;
+        
+      default:
+        setCurrentScreen('landing');
+        break;
+    }
   };
 
   const toggleTheme = () => {
@@ -145,8 +168,8 @@ function App() {
             isDarkMode={isDarkMode}
             toggleTheme={toggleTheme}
             onError={handleError}
-            onLogout={handleLogout} // Add logout handler
-            onPasswordChange={handlePasswordChange} // Add password change handler
+            onLogout={handleLogout}
+            onPasswordChange={handlePasswordChange}
           />
         )}
         
@@ -169,11 +192,22 @@ function App() {
           />
         )}
 
+        {currentScreen === 'saved-timetables' && (
+          <SavedTimetables
+            onBack={handleBack}
+            isDarkMode={isDarkMode}
+            toggleTheme={toggleTheme}
+            onViewTimetable={handleViewSpecificTimetable}
+            onError={handleError}
+          />
+        )}
+
         {currentScreen === 'view-timetables' && (
           <ViewTimetablesPage 
             onBack={handleBack}
             isDarkMode={isDarkMode}
             toggleTheme={toggleTheme}
+            timetableSchema={selectedTimetableSchema}
             onError={handleError}
           />
         )}
