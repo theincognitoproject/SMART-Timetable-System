@@ -141,33 +141,23 @@ class GlobalTimeTableGenerator:
             ("8:00-8:50", "8:50-9:40"),
             ("9:50-10:40", "10:40-11:30")
         ]
-        afternoon_pairs = [
-            ("12:20-1:10", "1:10-2:00"),
-            ("2:00-2:50", "2:50-3:40")
-        ]
+        early_afternoon_pair = [("12:20-1:10", "1:10-2:00")]
+        late_afternoon_pair = [("2:00-2:50", "2:50-3:40")]
 
-        # First try morning slots
-        for day in available_days:
-            print(f"\nTrying day: {day}")
+        # First try morning slots on all days
+        for day in available_days.copy():  # Use copy so we can modify the original safely
             for slot1, slot2 in morning_pairs:
-                print(f"Checking slots: {slot1}, {slot2}")
-                
                 if (self.check_global_constraints(year, section, subject, day, slot1) and 
                     self.check_global_constraints(year, section, subject, day, slot2) and
                     self.check_consecutive_slots_available(subject['teacher'], day, slot1, slot2)):
                     
-                    # Check venue availability
                     available_venue = None
                     for venue_no in venues.keys():
-                        is_available = self.is_venue_available(venue_no, day, [slot1, slot2])
-                        print(f"Venue {venue_no} available: {is_available}")
-                        if is_available:
-                            print(f"Found available venue: {venue_no}")
+                        if self.is_venue_available(venue_no, day, [slot1, slot2]):
                             available_venue = venue_no
                             break
                     
                     if available_venue:
-                        print(f"Scheduling in venue {available_venue} for slots {slot1}, {slot2}")
                         for slot in [slot1, slot2]:
                             self.all_timetables[(year, section)][day][slot] = {
                                 'code': subject['code'],
@@ -184,28 +174,24 @@ class GlobalTimeTableGenerator:
             if consecutive_scheduled:
                 break
 
-        # Only try afternoon slots if morning scheduling failed
+        # If morning scheduling failed, try early afternoon slots
         if not consecutive_scheduled:
-            for day in available_days:
-                print(f"\nTrying afternoon slots for day: {day}")
-                for slot1, slot2 in afternoon_pairs:
-                    print(f"Checking slots: {slot1}, {slot2}")
-                    
+            # Reshuffle days for the next attempt
+            random.shuffle(available_days)
+            
+            for day in available_days.copy():
+                for slot1, slot2 in early_afternoon_pair:
                     if (self.check_global_constraints(year, section, subject, day, slot1) and 
                         self.check_global_constraints(year, section, subject, day, slot2) and
                         self.check_consecutive_slots_available(subject['teacher'], day, slot1, slot2)):
                         
                         available_venue = None
                         for venue_no in venues.keys():
-                            is_available = self.is_venue_available(venue_no, day, [slot1, slot2])
-                            print(f"Venue {venue_no} available: {is_available}")
-                            if is_available:
-                                print(f"Found available venue: {venue_no}")
+                            if self.is_venue_available(venue_no, day, [slot1, slot2]):
                                 available_venue = venue_no
                                 break
                         
                         if available_venue:
-                            print(f"Scheduling in venue {available_venue} for slots {slot1}, {slot2}")
                             for slot in [slot1, slot2]:
                                 self.all_timetables[(year, section)][day][slot] = {
                                     'code': subject['code'],
@@ -221,22 +207,56 @@ class GlobalTimeTableGenerator:
                 
                 if consecutive_scheduled:
                     break
+        
+        # Only try late afternoon as a last resort
+        if not consecutive_scheduled:
+            # Reshuffle days for the final attempt
+            random.shuffle(available_days)
+            
+            for day in available_days.copy():
+                for slot1, slot2 in late_afternoon_pair:
+                    if (self.check_global_constraints(year, section, subject, day, slot1) and 
+                        self.check_global_constraints(year, section, subject, day, slot2) and
+                        self.check_consecutive_slots_available(subject['teacher'], day, slot1, slot2)):
+                        
+                        available_venue = None
+                        for venue_no in venues.keys():
+                            if self.is_venue_available(venue_no, day, [slot1, slot2]):
+                                available_venue = venue_no
+                                break
+                        
+                        if available_venue:
+                            for slot in [slot1, slot2]:
+                                self.all_timetables[(year, section)][day][slot] = {
+                                    'code': subject['code'],
+                                    'teacher': subject['teacher'],
+                                    'type': subject['type'],
+                                    'venue': f"{available_venue} - {venues[available_venue]}"
+                                }
+                                self.update_global_teacher_schedule(subject['teacher'], day, slot)
+                            self.update_venue_schedule(available_venue, day, [slot1, slot2])
+                            consecutive_scheduled = True
+                            available_days.remove(day)
+                            break
+                    
+                if consecutive_scheduled:
+                    break
 
         if not consecutive_scheduled:
-            print(f"Failed to schedule consecutive slots for {subject['code']}")
             return False
 
         # Schedule remaining hours (without venue requirement)
         remaining_hours = subject['hours'] - 2
-        for day in available_days:
+        
+        # Try to use all morning slots first across all days
+        for day in available_days.copy():
             if remaining_hours <= 0:
                 break
 
-            # Try morning slots first
             morning_slots = [slot for slot in self.morning_slots 
-                            if self.check_global_constraints(year, section, subject, day, slot)]
+                        if self.check_global_constraints(year, section, subject, day, slot)]
             
-            if morning_slots:
+            if morning_slots:  # If morning slots available, use them
                 slot = random.choice(morning_slots)
                 self.all_timetables[(year, section)][day][slot] = {
                     'code': subject['code'],
@@ -245,21 +265,51 @@ class GlobalTimeTableGenerator:
                 }
                 self.update_global_teacher_schedule(subject['teacher'], day, slot)
                 remaining_hours -= 1
-                continue
-
-            # Try afternoon slots
-            afternoon_slots = [slot for slot in self.afternoon_slots 
-                            if self.check_global_constraints(year, section, subject, day, slot)]
+                
+                if remaining_hours <= 0:
+                    break
+        
+        # If we still have hours to schedule, try afternoon slots
+        if remaining_hours > 0:
+            # Reshuffle days to avoid bias
+            random.shuffle(available_days)
             
-            if afternoon_slots:
-                slot = random.choice(afternoon_slots)
-                self.all_timetables[(year, section)][day][slot] = {
-                    'code': subject['code'],
-                    'teacher': subject['teacher'],
-                    'type': subject['type']
-                }
-                self.update_global_teacher_schedule(subject['teacher'], day, slot)
-                remaining_hours -= 1
+            for day in available_days:
+                if remaining_hours <= 0:
+                    break
+
+                # For remaining hours, prioritize early afternoon slots
+                early_afternoon_slots = ["12:20-1:10", "1:10-2:00"]
+                available_early_slots = [slot for slot in early_afternoon_slots 
+                                    if slot in self.afternoon_slots and 
+                                    self.check_global_constraints(year, section, subject, day, slot)]
+                
+                if available_early_slots:
+                    slot = random.choice(available_early_slots)
+                    self.all_timetables[(year, section)][day][slot] = {
+                        'code': subject['code'],
+                        'teacher': subject['teacher'],
+                        'type': subject['type']
+                    }
+                    self.update_global_teacher_schedule(subject['teacher'], day, slot)
+                    remaining_hours -= 1
+                    continue
+                    
+                # Only if no early slots available, try late afternoon slots
+                late_afternoon_slots = ["2:00-2:50", "2:50-3:40"]
+                available_late_slots = [slot for slot in late_afternoon_slots 
+                                    if slot in self.afternoon_slots and 
+                                    self.check_global_constraints(year, section, subject, day, slot)]
+                
+                if available_late_slots:
+                    slot = random.choice(available_late_slots)
+                    self.all_timetables[(year, section)][day][slot] = {
+                        'code': subject['code'],
+                        'teacher': subject['teacher'],
+                        'type': subject['type']
+                    }
+                    self.update_global_teacher_schedule(subject['teacher'], day, slot)
+                    remaining_hours -= 1
 
         return remaining_hours == 0
 
@@ -270,15 +320,36 @@ class GlobalTimeTableGenerator:
             available_days = self.days.copy()
             random.shuffle(available_days)
 
+            # Prioritize morning pairs first
+            morning_pairs = [
+                ("8:00-8:50", "8:50-9:40"),
+                ("9:50-10:40", "10:40-11:30")
+            ]
+            afternoon_pairs = [
+                ("12:20-1:10", "1:10-2:00"),
+                ("2:00-2:50", "2:50-3:40")
+            ]
+            
+            # Try morning pairs first for all days
             for day in available_days:
-                possible_pairs = [
-                    ("8:00-8:50", "8:50-9:40"),
-                    ("9:50-10:40", "10:40-11:30"),
-                    ("12:20-1:10", "1:10-2:00"),
-                    ("2:00-2:50", "2:50-3:40")
-                ]
-
-                for slot1, slot2 in possible_pairs:
+                for slot1, slot2 in morning_pairs:
+                    if (self.check_global_constraints(year, section, subject, day, slot1) and 
+                        self.check_global_constraints(year, section, subject, day, slot2)):
+                        
+                        # Schedule the consecutive slots
+                        for slot in [slot1, slot2]:
+                            self.all_timetables[(year, section)][day][slot] = {
+                                'code': subject['code'],
+                                'teacher': subject['teacher'],
+                                'type': subject['type']
+                            }
+                            self.update_global_teacher_schedule(subject['teacher'], day, slot)
+                        
+                        return True
+            
+            # Only if no morning pairs available, try afternoon pairs
+            for day in available_days:
+                for slot1, slot2 in afternoon_pairs:
                     if (self.check_global_constraints(year, section, subject, day, slot1) and 
                         self.check_global_constraints(year, section, subject, day, slot2)):
                         
@@ -298,18 +369,19 @@ class GlobalTimeTableGenerator:
         # Regular theory subject scheduling
         hours_remaining = subject['hours']
         available_days = self.days.copy()
-        random.shuffle(available_days)
-
+        
+        # First try to fill morning slots across all days
         for day in available_days:
             if hours_remaining <= 0:
                 break
-
-            # Try morning slots first
+                
             morning_slots = [slot for slot in self.morning_slots 
                             if self.check_global_constraints(year, section, subject, day, slot)]
             
-            if morning_slots:  # If morning slots available, use them
+            while morning_slots and hours_remaining > 0:
                 slot = random.choice(morning_slots)
+                morning_slots.remove(slot)  # Remove used slot
+                
                 self.all_timetables[(year, section)][day][slot] = {
                     'code': subject['code'],
                     'teacher': subject['teacher'],
@@ -317,24 +389,56 @@ class GlobalTimeTableGenerator:
                 }
                 self.update_global_teacher_schedule(subject['teacher'], day, slot)
                 hours_remaining -= 1
-                continue
-
-            # Only if no morning slots available, try afternoon slots
-            afternoon_slots = [slot for slot in self.afternoon_slots 
-                            if self.check_global_constraints(year, section, subject, day, slot)]
+        
+        # Only if we still have hours to schedule, try afternoon slots
+        if hours_remaining > 0:
+            # Shuffle days again to avoid bias in afternoon scheduling
+            random.shuffle(available_days)
             
-            if afternoon_slots:
-                slot = random.choice(afternoon_slots)
-                self.all_timetables[(year, section)][day][slot] = {
-                    'code': subject['code'],
-                    'teacher': subject['teacher'],
-                    'type': subject['type']
-                }
-                self.update_global_teacher_schedule(subject['teacher'], day, slot)
-                hours_remaining -= 1
+            for day in available_days:
+                if hours_remaining <= 0:
+                    break
+                    
+                # For afternoon slots, prioritize early afternoon slots
+                early_afternoon_slots = ["12:20-1:10", "1:10-2:00"]
+                late_afternoon_slots = ["2:00-2:50", "2:50-3:40"]
+                
+                # First check early afternoon slots
+                available_early_slots = [slot for slot in early_afternoon_slots 
+                                    if slot in self.afternoon_slots and 
+                                    self.check_global_constraints(year, section, subject, day, slot)]
+                
+                while available_early_slots and hours_remaining > 0:
+                    slot = random.choice(available_early_slots)
+                    available_early_slots.remove(slot)  # Remove used slot
+                    
+                    self.all_timetables[(year, section)][day][slot] = {
+                        'code': subject['code'],
+                        'teacher': subject['teacher'],
+                        'type': subject['type']
+                    }
+                    self.update_global_teacher_schedule(subject['teacher'], day, slot)
+                    hours_remaining -= 1
+                
+                # Only if no early afternoon slots available or hours still remain, try late afternoon slots
+                if hours_remaining > 0:
+                    available_late_slots = [slot for slot in late_afternoon_slots 
+                                        if slot in self.afternoon_slots and 
+                                        self.check_global_constraints(year, section, subject, day, slot)]
+                    
+                    while available_late_slots and hours_remaining > 0:
+                        slot = random.choice(available_late_slots)
+                        available_late_slots.remove(slot)  # Remove used slot
+                        
+                        self.all_timetables[(year, section)][day][slot] = {
+                            'code': subject['code'],
+                            'teacher': subject['teacher'],
+                            'type': subject['type']
+                        }
+                        self.update_global_teacher_schedule(subject['teacher'], day, slot)
+                        hours_remaining -= 1
 
         return hours_remaining == 0
-
     def validate_venue_schedules(self) -> Dict:
         venue_usage = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         
