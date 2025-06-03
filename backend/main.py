@@ -1160,6 +1160,236 @@ async def shutdown_event():
     except Exception as e:
         logger.error(f"Error during shutdown cleanup: {e}")
 
+@app.get("/api/timetable-schemas")
+def get_timetable_schemas():
+    """
+    Retrieve all available timetable schemas
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute('SHOW DATABASES')
+        databases = cursor.fetchall()
+        
+        # Filter for timetable schemas only
+        timetable_schemas = [
+            db['Database'] for db in databases 
+            if str(db['Database']).startswith('timetable_')
+        ]
+        
+        return {
+            "success": True,
+            "schemas": timetable_schemas
+        }
+    
+    except Exception as e:
+        logger.error(f"Error retrieving timetable schemas: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
+    
+    finally:
+        if conn:
+            conn.close()
+
+@app.delete("/api/timetable-schema/{schema_name}")
+def delete_timetable_schema(schema_name: str):
+    """
+    Delete a specific timetable schema
+    """
+    conn = None
+    try:
+        # Validate schema name for safety
+        if not schema_name.startswith('timetable_'):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid timetable schema name. Must start with 'timetable_'"
+            )
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Check if schema exists
+        cursor.execute('SHOW DATABASES')
+        databases = cursor.fetchall()
+        
+        available_schemas = [db['Database'] for db in databases]
+        
+        if schema_name not in available_schemas:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Timetable schema '{schema_name}' not found"
+            )
+        
+        # Drop the database
+        cursor.execute(f"DROP DATABASE `{schema_name}`")
+        
+        return {
+            "success": True,
+            "message": f"Timetable schema '{schema_name}' deleted successfully"
+        }
+    
+    except HTTPException:
+        raise
+    
+    except Exception as e:
+        logger.error(f"Error deleting timetable schema: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database error: {str(e)}"
+        )
+    
+    finally:
+        if conn:
+            conn.close()
+
+@app.get("/api/timetable/{schema_name}")
+def get_specific_timetable(schema_name: str):
+    """
+    Retrieve timetable data from a specific schema
+    """
+    conn = None
+    try:
+        # Validate schema name for safety
+        if not schema_name.startswith('timetable_'):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid timetable schema name. Must start with 'timetable_'"
+            )
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Check if schema exists
+        cursor.execute('SHOW DATABASES')
+        databases = cursor.fetchall()
+        
+        available_schemas = [db['Database'] for db in databases]
+        
+        if schema_name not in available_schemas:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Timetable schema '{schema_name}' not found"
+            )
+        
+        # Switch to the specific database
+        conn.database = schema_name
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get all timetable data
+        timetable_data = {
+            "classes": [],
+            "teachers": [],
+            "venues": []
+        }
+        
+        # Get class timetables
+        try:
+            cursor.execute("""
+                SELECT 
+                    year, 
+                    section, 
+                    timetable_data, 
+                    free_hours, 
+                    generated_at
+                FROM class_timetables
+                ORDER BY year, section
+            """)
+            
+            class_timetables = cursor.fetchall()
+            
+            timetable_data["classes"] = [
+                {
+                    "year": row['year'],
+                    "section": row['section'],
+                    "timetable": rearrange_timetable_data(safe_json_parse(row['timetable_data'])),
+                    "free_hours": safe_json_parse(row['free_hours']),
+                    "generated_at": str(row['generated_at']) if row['generated_at'] else None
+                }
+                for row in class_timetables
+            ]
+        except Exception as e:
+            logger.warning(f"Could not fetch class timetables from {schema_name}: {e}")
+        
+        # Get teacher timetables
+        try:
+            cursor.execute("""
+                SELECT 
+                    employee_id, 
+                    teacher_name, 
+                    timetable_data, 
+                    free_hours, 
+                    generated_at
+                FROM teacher_timetables
+                ORDER BY teacher_name
+            """)
+            
+            teacher_timetables = cursor.fetchall()
+            
+            timetable_data["teachers"] = [
+                {
+                    "employee_id": row['employee_id'],
+                    "teacher_name": row['teacher_name'],
+                    "timetable": rearrange_timetable_data(safe_json_parse(row['timetable_data'])),
+                    "free_hours": safe_json_parse(row['free_hours']),
+                    "generated_at": str(row['generated_at']) if row['generated_at'] else None
+                }
+                for row in teacher_timetables
+            ]
+        except Exception as e:
+            logger.warning(f"Could not fetch teacher timetables from {schema_name}: {e}")
+        
+        # Get venue timetables
+        try:
+            cursor.execute("""
+                SELECT 
+                    venue_id, 
+                    venue_name, 
+                    timetable_data, 
+                    free_hours, 
+                    generated_at
+                FROM venue_timetables
+                ORDER BY venue_name
+            """)
+            
+            venue_timetables = cursor.fetchall()
+            
+            timetable_data["venues"] = [
+                {
+                    "venue_id": row['venue_id'],
+                    "venue_name": row['venue_name'],
+                    "timetable": rearrange_timetable_data(safe_json_parse(row['timetable_data'])),
+                    "free_hours": safe_json_parse(row['free_hours']),
+                    "generated_at": str(row['generated_at']) if row['generated_at'] else None
+                }
+                for row in venue_timetables
+            ]
+        except Exception as e:
+            logger.warning(f"Could not fetch venue timetables from {schema_name}: {e}")
+        
+        return {
+            "success": True,
+            "schema_name": schema_name,
+            "timetable_data": timetable_data
+        }
+    
+    except HTTPException:
+        raise
+    
+    except Exception as e:
+        logger.error(f"Error retrieving specific timetable: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database error: {str(e)}"
+        )
+    
+    finally:
+        if conn:
+            conn.close()
+
 # Main Execution
 if __name__ == "__main__":
     import uvicorn
