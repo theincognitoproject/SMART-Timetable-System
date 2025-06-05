@@ -157,6 +157,7 @@ def get_login_db_connection():
             status_code=500,
             detail=f"Database connection error: {str(err)}"
         )
+
 # Helper Functions
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
@@ -268,6 +269,7 @@ async def login(login_data: LoginRequest):
     Handle user login
     """
     conn = None
+    cursor = None
     try:
         logger.info(f"Login attempt for user: {login_data.username}")
         
@@ -321,6 +323,7 @@ async def change_password(change_pwd_data: ChangePasswordRequest):
     Handle password change
     """
     conn = None
+    cursor = None
     try:
         logger.info(f"Password change attempt for user: {change_pwd_data.username}")
         
@@ -374,6 +377,7 @@ async def change_password(change_pwd_data: ChangePasswordRequest):
             cursor.close()
         if conn:
             conn.close()
+
 # Timetable Management Endpoints
 @app.get("/api/timetables/classes")
 def get_class_timetables():
@@ -589,6 +593,7 @@ async def process_year_files(
             status_code=500, 
             detail=f"Server error: {str(e)}"
         )
+
 @app.post("/api/process-faculty-files")
 async def process_faculty_files(
     department_name: str = Form(...),
@@ -740,6 +745,84 @@ async def get_schemas():
             detail=f"Unexpected error: {str(e)}"
         )
 
+@app.delete("/api/department/{department_name}")
+async def delete_department(department_name: str):
+    """
+    Delete a department (schema) from the database
+    """
+    conn = None
+    cursor = None
+    try:
+        # Validate department name
+        if not department_name:
+            raise HTTPException(
+                status_code=400,
+                detail="Department name is required"
+            )
+        
+        # System schemas that should not be deleted
+        protected_schemas = [
+            'defaultdb', 'information_schema', 'mysql', 
+            'performance_schema', 'sys', 'login_details'
+        ]
+        
+        if department_name.lower() in protected_schemas:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Cannot delete protected schema: {department_name}"
+            )
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Check if schema exists
+        cursor.execute('SHOW DATABASES')
+        databases = cursor.fetchall()
+        available_schemas = [db['Database'] for db in databases]
+        
+        if department_name not in available_schemas:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Department '{department_name}' not found"
+            )
+        
+        # Check if it's a timetable schema (don't delete those from this endpoint)
+        if department_name.startswith('timetable_'):
+            raise HTTPException(
+                status_code=400,
+                detail="Use the timetable deletion endpoint for timetable schemas"
+            )
+        
+        # Log the deletion attempt
+        logger.info(f"Attempting to delete department: {department_name}")
+        
+        # Drop the database
+        cursor.execute(f"DROP DATABASE `{department_name}`")
+        conn.commit()
+        
+        logger.info(f"Successfully deleted department: {department_name}")
+        
+        return {
+            "success": True,
+            "message": f"Department '{department_name}' deleted successfully"
+        }
+    
+    except HTTPException:
+        raise
+    
+    except Exception as e:
+        logger.error(f"Error deleting department {department_name}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete department: {str(e)}"
+        )
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 @app.get("/api/schema/{schema_name}/sortedtable")
 async def get_sorted_table(
     schema_name: str,
@@ -750,7 +833,7 @@ async def get_sorted_table(
 ):
     """
     Retrieve SortedTable data
-        """
+    """
     conn = None
     try:
         # Establish database connection
@@ -1410,3 +1493,5 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+                
+                

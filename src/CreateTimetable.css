@@ -546,3 +546,253 @@
     transform: rotate(360deg);
   }
 }
+
+/* Action buttons container */
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Delete button styling */
+.delete-button {
+  background: #ff4444;
+  border: none;
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.delete-button:hover {
+  background: #ff0000;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(255, 68, 68, 0.3);
+}
+
+.delete-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.delete-button:disabled:hover {
+  box-shadow: none;
+}
+
+.delete-icon {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Update existing view button to match */
+.view-table-button {
+  background: #2196F3;
+  border: none;
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.view-table-button:hover {
+  background: #1976D2;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.view-table-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.view-table-button:disabled:hover {
+  box-shadow: none;
+}
+
+.view-icon {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Loading spinner for buttons */
+.button-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Dark mode adjustments */
+.dark .delete-button {
+  background: #cc3333;
+}
+
+.dark .delete-button:hover {
+  background: #ff4444;
+}
+
+.dark .delete-button:disabled {
+  background: #555;
+}
+
+.dark .view-table-button {
+  background: #1565C0;
+}
+
+.dark .view-table-button:hover {
+  background: #1976D2;
+}
+
+.dark .view-table-button:disabled {
+  background: #555;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .action-buttons {
+    gap: 5px;
+  }
+
+  .delete-button,
+  .view-table-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .delete-icon,
+  .view-icon {
+    font-size: 16px;
+  }
+}
+
+/* Table styling updates for better alignment */
+.departments-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.departments-table th,
+.departments-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* Center align the Actions column header and content */
+.departments-table th:nth-child(3),
+.departments-table td:nth-child(3) {
+  text-align: center;
+}
+
+/* Center align the Select column header and content */
+.departments-table th:nth-child(4),
+.departments-table td:nth-child(4) {
+  text-align: center;
+}
+
+/* Action buttons container - ensure proper centering */
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+}
+
+/* View button styling */
+.view-table-button {
+  background: #2196F3;
+  border: none;
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Delete button styling */
+.delete-button {
+  background: #ff4444;
+  border: none;
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Ensure the checkbox is centered */
+.department-checkbox {
+  display: block;
+  margin: 0 auto;
+  cursor: pointer;
+}
+
+/* Dark mode table styling */
+.dark .departments-table th,
+.dark .departments-table td {
+  border-bottom-color: #444;
+}
+
+/* If you need to ensure the Actions column has a specific width */
+.departments-table th:nth-child(3) {
+  width: 120px; /* Adjust this value as needed */
+  min-width: 120px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .departments-table th,
+  .departments-table td {
+    padding: 8px 10px;
+  }
+  
+  .action-buttons {
+    gap: 5px;
+  }
+  
+  .departments-table th:nth-child(3) {
+    width: 100px;
+    min-width: 100px;
+  }
+}

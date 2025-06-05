@@ -3,6 +3,7 @@ import './CreateTimetable.css';
 import DepartmentPopup from './DepartmentPopup';
 import TablePopup from './TablePopup';
 import Toast from './Toast';
+import ConfirmationDialog from './ConfirmationDialog';
 import axiosInstance from './utils/axiosConfig';
 
 const CreateTimetable = ({ 
@@ -26,6 +27,9 @@ const CreateTimetable = ({
   const [toastType, setToastType] = useState('success');
   const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [departmentToDelete, setDepartmentToDelete] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fullText = "Choose the departments required for timetable generation";
 
@@ -117,6 +121,49 @@ const CreateTimetable = ({
     } finally {
       setLoadingTable(false);
     }
+  };
+
+  const handleDeleteClick = (departmentName) => {
+    setDepartmentToDelete(departmentName);
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      setIsDeleting(true);
+      setShowConfirmDialog(false);
+      
+      const response = await axiosInstance.delete(`/department/${departmentToDelete}`);
+      
+      if (response.data.success) {
+        // Remove the department from selected departments if it was selected
+        setSelectedDepartments(prev => prev.filter(dep => dep !== departmentToDelete));
+        
+        // Show success toast
+        setToastMessage(`Department "${departmentToDelete}" deleted successfully!`);
+        setToastType('success');
+        setShowToast(true);
+        
+        // Refresh departments list
+        fetchDepartments();
+      } else {
+        throw new Error(response.data.message || 'Failed to delete department');
+      }
+    } catch (error) {
+      console.error('Error deleting department:', error);
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to delete department';
+      setToastMessage(`Error: ${errorMessage}`);
+      setToastType('error');
+      setShowToast(true);
+    } finally {
+      setIsDeleting(false);
+      setDepartmentToDelete('');
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowConfirmDialog(false);
+    setDepartmentToDelete('');
   };
 
   const handleCloseTablePopup = () => {
@@ -267,7 +314,7 @@ const CreateTimetable = ({
     }
   };
 
-  const handleDownload = async () => {
+    const handleDownload = async () => {
     // Check if any departments are selected
     if (selectedDepartments.length === 0) {
       setToastMessage("Please select at least one department to download.");
@@ -429,17 +476,32 @@ const CreateTimetable = ({
                       <td>{index + 1}</td>
                       <td>{department}</td>
                       <td>
-                        <button 
-                          className="view-table-button"
-                          onClick={() => handleViewTable(department)}
-                          disabled={loadingTable}
-                        >
-                          {loadingTable && selectedDepartment === department ? (
-                            <span className="button-spinner"></span>
-                          ) : (
-                            <span className="view-icon">👁️</span>
-                          )}
-                        </button>
+                        <div className="action-buttons">
+                          <button 
+                            className="view-table-button"
+                            onClick={() => handleViewTable(department)}
+                            disabled={loadingTable || isDeleting}
+                            title="View table"
+                          >
+                            {loadingTable && selectedDepartment === department ? (
+                              <span className="button-spinner"></span>
+                            ) : (
+                              <span className="view-icon">👁️</span>
+                            )}
+                          </button>
+                          <button 
+                            className="delete-button"
+                            onClick={() => handleDeleteClick(department)}
+                            disabled={isDeleting || isDownloading}
+                            title="Delete department"
+                          >
+                            {isDeleting && departmentToDelete === department ? (
+                              <span className="button-spinner"></span>
+                            ) : (
+                              <span className="delete-icon">🗑️</span>
+                            )}
+                          </button>
+                        </div>
                       </td>
                       <td>
                         <input 
@@ -447,7 +509,7 @@ const CreateTimetable = ({
                           className="department-checkbox"
                           checked={selectedDepartments.includes(department)}
                           onChange={() => handleCheckboxChange(department)}
-                          disabled={isDownloading}
+                          disabled={isDownloading || isDeleting}
                         />
                       </td>
                     </tr>
@@ -462,7 +524,7 @@ const CreateTimetable = ({
           <button 
             className="action-button create-dept"
             onClick={handleCreateDepartment}
-            disabled={isDownloading}
+            disabled={isDownloading || isDeleting}
           >
             Create a new department
             <div className="button-glow"></div>
@@ -471,7 +533,7 @@ const CreateTimetable = ({
           <button 
             className="action-button download"
             onClick={handleDownload}
-            disabled={isDownloading || selectedDepartments.length === 0}
+            disabled={isDownloading || selectedDepartments.length === 0 || isDeleting}
           >
             {isDownloading ? (
               <>
@@ -488,7 +550,7 @@ const CreateTimetable = ({
           <button 
             className="action-button generate"
             onClick={onGenerateTimetable}
-            disabled={isDownloading}
+            disabled={isDownloading || isDeleting}
           >
             Generate Timetable
             <div className="button-glow"></div>
@@ -517,6 +579,18 @@ const CreateTimetable = ({
           type={toastType} 
           duration={3000} 
           onClose={() => setShowToast(false)} 
+        />
+      )}
+
+      {showConfirmDialog && (
+        <ConfirmationDialog
+          title="Confirm Delete"
+          message={`Are you sure you want to delete the department "${departmentToDelete}"? This action cannot be undone.`}
+          onConfirm={handleConfirmDelete}
+          onCancel={handleCancelDelete}
+          confirmText="Delete"
+          cancelText="Cancel"
+          isDarkMode={isDarkMode}
         />
       )}
     </div>
