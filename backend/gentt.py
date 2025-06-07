@@ -934,7 +934,7 @@ async def generate_timetable_fastapi(
             return {"status": "error", "message": "Failed to generate timetable after multiple attempts"}
 
         logger.info("Saving timetables to database")
-        connection_uri = os.getenv("TIMETABLE_DB_URI")
+        connection_uri = os.getenv("DATABASE_URI")
         saved = save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df, venues, connection_uri)
 
         if not saved:
@@ -961,7 +961,7 @@ async def save_timetable_to_db_fastapi(
         generator, all_sections_data, faculty_df, cdc_df, venues = prepare_timetable_data(form, files)
 
         logger.info("Saving timetables to database")
-        connection_uri = os.getenv("TIMETABLE_DB_URI")
+        connection_uri = os.getenv("DATABASE_URI")
         saved = save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df, venues, connection_uri)
 
         if not saved:
