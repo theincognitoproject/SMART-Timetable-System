@@ -691,7 +691,7 @@ def get_cdc_subjects_for_section(year: int, section: str, cdc_df: pd.DataFrame,
 #Database Storage Functions
 def save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df, venues, connection_uri):
     try:
-        logger.info(f"Attempting to save timetables to database using URI: {connection_uri}")
+        logger.info(f"Attempting to save timetables to database using URI:")
         # Create SQLAlchemy engine
         engine = create_engine(connection_uri)
 
