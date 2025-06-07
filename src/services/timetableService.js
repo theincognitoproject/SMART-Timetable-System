@@ -76,3 +76,40 @@ export const deleteTimetableSchema = async (schemaName) => {
     throw new Error(error.response?.data?.detail || 'Failed to delete timetable schema');
   }
 };
+
+/**
+ * Download timetables as Excel files
+ * @param {string|null} schemaName - Optional schema name to fetch from
+ * @returns {Promise<void>} 
+ */
+export const downloadTimetablesAsExcel = async (schemaName = null) => {
+  try {
+    const endpoint = schemaName 
+      ? `/timetable/${schemaName}/excel` 
+      : '/timetables/excel';
+
+    const response = await axiosInstance.get(endpoint, {
+      responseType: 'blob'
+    });
+    
+    // Create a zip file containing all Excel files
+    const zipBlob = new Blob([response.data], { type: 'application/zip' });
+    const downloadUrl = window.URL.createObjectURL(zipBlob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    
+    // Name the file based on schema if available
+    const fileName = schemaName 
+      ? `timetables_${schemaName}.zip`
+      : 'timetables.zip';
+    
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+  } catch (error) {
+    console.error('Error downloading timetables:', error);
+    throw new Error(error.response?.data?.detail || 'Failed to download timetables');
+  }
+};

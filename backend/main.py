@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 import mysql.connector
@@ -14,19 +14,17 @@ import json
 from datetime import datetime
 import bcrypt
 from pydantic import BaseModel, Field, field_validator
+from fastapi.responses import FileResponse, Response
+from openpyxl import Workbook
+from io import BytesIO
+import zipfile
+from contextlib import asynccontextmanager
 
 from gentt import (
     GlobalTimeTableGenerator,
     prepare_timetable_data,
     validate_timetable,
     save_timetables_to_database)
-
-app = FastAPI(
-    title="Timetable and Allocator API",
-    description="Comprehensive API for timetable generation, validation, and schedule retrieval",
-    version="1.0.0"
-)
-# from gentt import router as timetable_router
 
 # Load environment variables
 load_dotenv()
@@ -74,13 +72,43 @@ PREDEFINED_DAYS = [
     "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"
 ]
 
-# Create FastAPI app
+# Add lifespan function before app creation
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan event handler for startup and shutdown events
+    """
+    # Startup
+    logger.info("Starting Timetable Allocation API")
+    logger.info(f"Predefined Slots: {PREDEFINED_SLOTS}")
+    logger.info(f"Predefined Days: {PREDEFINED_DAYS}")
+
+    uploads_dir = "uploads"
+    os.makedirs(uploads_dir, exist_ok=True)
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down Timetable Allocation API")
+    try:
+        for filename in os.listdir(uploads_dir):
+            file_path = os.path.join(uploads_dir, filename)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+            except Exception as e:
+                logger.error(f"Error cleaning up {file_path}: {e}")
+    except Exception as e:
+        logger.error(f"Error during shutdown cleanup: {e}")
+
+# Create FastAPI app with lifespan
 app = FastAPI(
     title="Timetable and Allocator API",
-    description="Comprehensive API for timetable management and department allocation",
-    version="1.0.0"
+    description="Comprehensive API for timetable generation, validation, and schedule retrieval",
+    version="1.0.0",
+    lifespan=lifespan
 )
-# app.include_router(timetable_router)
+
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
@@ -151,15 +179,30 @@ def get_db_connection():
 
 def get_login_db_connection():
     """
-    Establish connection to login database
+    Establish connection to login database with better error handling
     """
     try:
+        # Try to get port from environment, default to 20721 if not set
+        port = os.getenv('DB_PORT', '20721')
+        
+        # Validate port
+        try:
+            port = int(port)
+        except ValueError:
+            logger.error(f"Invalid DB_PORT value: {port}")
+            port = 20721  # Use default port if invalid
+        
+        # Get other connection parameters with defaults
+        host = os.getenv('DB_HOST', 'localhost')
+        user = os.getenv('DB_USER', 'root')
+        password = os.getenv('DB_PASSWORD', '')
+        
         conn = mysql.connector.connect(
-            host=os.getenv('DB_HOST'),
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
+            host=host,
+            user=user,
+            password=password,
             database='login_details',
-            port=int(os.getenv('DB_PORT')),
+            port=port,
             ssl_disabled=True
         )
         return conn
@@ -168,6 +211,12 @@ def get_login_db_connection():
         raise HTTPException(
             status_code=500,
             detail=f"Database connection error: {str(err)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in database connection: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while connecting to database"
         )
 
 # Helper Functions
@@ -841,7 +890,7 @@ async def get_sorted_table(
     limit: Optional[int] = Query(default=100, ge=1, le=1000),
     offset: Optional[int] = Query(default=0, ge=0),
     sort_by: Optional[str] = Query(default=None),
-    order: Optional[str] = Query(default='ASC', regex='^(ASC|DESC)$')
+    order: Optional[str] = Query(default='ASC', pattern='^(ASC|DESC)$')  # Changed from regex to pattern
 ):
     """
     Retrieve SortedTable data
@@ -1222,39 +1271,7 @@ async def global_exception_handler(request, exc):
         detail="Internal server error"
     )
 
-# Startup Event
-@app.on_event("startup")
-async def startup_event():
-    """
-    Perform setup tasks when the server starts
-    """
-    logger.info("Starting Timetable Allocation API")
-    logger.info(f"Predefined Slots: {PREDEFINED_SLOTS}")
-    logger.info(f"Predefined Days: {PREDEFINED_DAYS}")
-
-    uploads_dir = "uploads"
-    os.makedirs(uploads_dir, exist_ok=True)
-
-# Shutdown Event
-@app.on_event("shutdown")
-async def shutdown_event():
-    """
-    Perform cleanup tasks when the server shuts down
-    """
-    logger.info("Shutting down Timetable Allocation API")
-    
-    uploads_dir = "uploads"
-    try:
-        for filename in os.listdir(uploads_dir):
-            file_path = os.path.join(uploads_dir, filename)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-            except Exception as e:
-                logger.error(f"Error cleaning up {file_path}: {e}")
-    except Exception as e:
-        logger.error(f"Error during shutdown cleanup: {e}")
-
+# Timetable and Allocator API
 @app.get("/api/timetable-schemas")
 def get_timetable_schemas():
     """
@@ -1548,17 +1565,171 @@ async def generate_timetable_fastapi(
         logger.error(f"Exception during timetable generation: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Timetable generation failed: {str(e)}")
 
+@app.get("/api/timetable/{schema_name}/excel")
+async def download_timetables_excel(schema_name: str):
+    """
+    Generate and download Excel files for timetables
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Check if schema exists
+        cursor.execute('SHOW DATABASES')
+        databases = cursor.fetchall()
+        if schema_name not in [db['Database'] for db in databases]:
+            raise HTTPException(status_code=404, detail=f"Schema {schema_name} not found")
+        
+        # Switch to schema
+        conn.database = schema_name
+        cursor = conn.cursor(dictionary=True)
+        
+        # Create Excel files
+        excels = {
+            'class_timetables.xlsx': create_class_timetables_excel(cursor),
+            'teacher_timetables.xlsx': create_teacher_timetables_excel(cursor),
+            'venue_timetables.xlsx': create_venue_timetables_excel(cursor)
+        }
+        
+        # Create ZIP file in memory
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for filename, excel_data in excels.items():
+                zip_file.writestr(filename, excel_data.getvalue())
+        
+        # Get the ZIP content
+        zip_buffer.seek(0)
+        content = zip_buffer.getvalue()
+        
+        # Create response with proper headers
+        return Response(
+            content=content,
+            media_type='application/zip',
+            headers={
+                'Content-Disposition': f'attachment; filename=timetables_{schema_name}.zip'
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Error creating Excel files: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn:
+            conn.close()
 
-# Main Execution
+def create_class_timetables_excel(cursor):
+    wb = Workbook()
+    cursor.execute("SELECT * FROM class_timetables ORDER BY year, section")
+    class_data = cursor.fetchall()
+    
+    for item in class_data:
+        sheet_name = f"Year{item['year']}-{item['section']}"
+        ws = wb.create_sheet(sheet_name)
+        
+        # Add headers
+        ws.append(['Time'] + PREDEFINED_DAYS)
+        
+        timetable = safe_json_parse(item['timetable_data'])
+        
+        # Add data rows
+        for slot in PREDEFINED_SLOTS:
+            row = [slot]
+            for day in PREDEFINED_DAYS:
+                cell_data = timetable.get(day, {}).get(slot, '')
+                if isinstance(cell_data, dict):
+                    cell_text = f"{cell_data.get('code', '')}\n{cell_data.get('teacher', '')}"
+                    if cell_data.get('venue'):
+                        cell_text += f"\n{cell_data['venue']}"
+                    row.append(cell_text)
+                else:
+                    row.append(cell_data or 'FREE')
+            ws.append(row)
+    
+    # Remove default sheet
+    del wb['Sheet']
+    
+    excel_buffer = BytesIO()
+    wb.save(excel_buffer)
+    excel_buffer.seek(0)
+    return excel_buffer
+
+def create_teacher_timetables_excel(cursor):
+    wb = Workbook()
+    cursor.execute("SELECT * FROM teacher_timetables ORDER BY teacher_name")
+    teacher_data = cursor.fetchall()
+    
+    for item in teacher_data:
+        sheet_name = item['teacher_name'][:31]  # Excel sheet name length limit
+        ws = wb.create_sheet(sheet_name)
+        
+        # Add headers
+        ws.append(['Time'] + PREDEFINED_DAYS)
+        
+        timetable = safe_json_parse(item['timetable_data'])
+        
+        # Add data rows
+        for slot in PREDEFINED_SLOTS:
+            row = [slot]
+            for day in PREDEFINED_DAYS:
+                cell_data = timetable.get(day, {}).get(slot, '')
+                if isinstance(cell_data, dict):
+                    cell_text = f"{cell_data.get('code', '')}\n{cell_data.get('year', '')}-{cell_data.get('section', '')}"
+                    if cell_data.get('venue'):
+                        cell_text += f"\n{cell_data['venue']}"
+                    row.append(cell_text)
+                else:
+                    row.append(cell_data or 'FREE')
+            ws.append(row)
+    
+    # Remove default sheet
+    del wb['Sheet']
+    
+    excel_buffer = BytesIO()
+    wb.save(excel_buffer)
+    excel_buffer.seek(0)
+    return excel_buffer
+
+def create_venue_timetables_excel(cursor):
+    wb = Workbook()
+    cursor.execute("SELECT * FROM venue_timetables ORDER BY venue_name")
+    venue_data = cursor.fetchall()
+    
+    for item in venue_data:
+        sheet_name = item['venue_name'][:31]  # Excel sheet name length limit
+        ws = wb.create_sheet(sheet_name)
+        
+        # Add headers
+        ws.append(['Time'] + PREDEFINED_DAYS)
+        
+        timetable = safe_json_parse(item['timetable_data'])
+        
+        # Add data rows
+        for slot in PREDEFINED_SLOTS:
+            row = [slot]
+            for day in PREDEFINED_DAYS:
+                cell_data = timetable.get(day, {}).get(slot, '')
+                if isinstance(cell_data, dict):
+                    cell_text = f"{cell_data.get('code', '')}\n{cell_data.get('teacher', '')}\n{cell_data.get('year', '')}-{cell_data.get('section', '')}"
+                    row.append(cell_text)
+                else:
+                    row.append(cell_data or 'FREE')
+            ws.append(row)
+    
+    # Remove default sheet
+    del wb['Sheet']
+    
+    excel_buffer = BytesIO()
+    wb.save(excel_buffer)
+    excel_buffer.seek(0)  # Only seek once
+    return excel_buffer
+
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(
-        "main:app", 
-        host="0.0.0.0", 
-        port=8000, 
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
         reload=True,
         log_level="info"
     )
-                
-                
+

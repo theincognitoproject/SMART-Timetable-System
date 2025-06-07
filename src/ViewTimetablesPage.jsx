@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchTimetables } from './services/timetableService';
+import { fetchTimetables, downloadTimetablesAsExcel } from './services/timetableService';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import './ViewTimetablesPage.css';
@@ -362,7 +362,6 @@ const ViewTimetablesPage = ({
     );
   };
 
-  // Render Sidebar
   const renderSidebar = () => (
     <div className="sidebar">
       <div className="view-options">
@@ -472,6 +471,16 @@ const ViewTimetablesPage = ({
     </div>
   );
 
+  // Add this right after the toggleTheme const declaration
+  const handleExcelDownload = async () => {
+    try {
+      await downloadTimetablesAsExcel(timetableSchema);
+    } catch (error) {
+      console.error('Error downloading Excel files:', error);
+      if (onError) onError(error);
+    }
+  };
+
   // Main Render
   return (
     <div className={`view-timetables-page ${isDarkMode ? 'dark' : 'light'}`}>
@@ -479,10 +488,19 @@ const ViewTimetablesPage = ({
         <div className="logo-section">
           <img src="/srmlogo.png" alt="RSKM Logo" className="logo" />
         </div>
-        <div className="theme-switch" onClick={toggleTheme}>
-          <div className="switch-track">
-            <div className="switch-thumb">
-              {isDarkMode ? '🌙' : '☀️'}
+        <div className="header-controls">
+          <button 
+            className="excel-download-btn" 
+            onClick={handleExcelDownload}
+            title="Download all timetables as Excel files"
+          >
+            📥 Download Excel
+          </button>
+          <div className="theme-switch" onClick={toggleTheme}>
+            <div className="switch-track">
+              <div className="switch-thumb">
+                {isDarkMode ? '🌙' : '☀️'}
+              </div>
             </div>
           </div>
         </div>
