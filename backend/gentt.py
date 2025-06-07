@@ -7,11 +7,9 @@ from datetime import datetime
 import pandas as pd
 from typing import Dict, List
 from collections import defaultdict
-from flask import Flask, request, jsonify
 import traceback
-from flask_cors import CORS
 import logging
-
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 
 class GlobalTimeTableGenerator:
     def __init__(self, section_config=None):
@@ -693,10 +691,14 @@ def get_cdc_subjects_for_section(year: int, section: str, cdc_df: pd.DataFrame,
 #Database Storage Functions
 def save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df, venues, connection_uri):
     try:
+        logger.info(f"Attempting to save timetables to database using URI: {connection_uri}")
         # Create SQLAlchemy engine
         engine = create_engine(connection_uri)
-        
+
+        logger.info("Database engine created successfully.")
+
         # Create a connection
+        logger.info("Attempting to establish database connection.")
         with engine.connect() as connection:
             # Start a transaction
             with connection.begin():
@@ -704,9 +706,11 @@ def save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 schema_name = f"timetable_{timestamp}"
 
+                logger.info(f"Creating schema: {schema_name}")
                 # Create schema
                 connection.execute(text(f"CREATE SCHEMA {schema_name}"))
 
+                logger.info(f"Creating tables within schema: {schema_name}")
                 # Create tables within the schema
                 connection.execute(text(f"""
                 CREATE TABLE {schema_name}.class_timetables (
@@ -742,6 +746,7 @@ def save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df
                 """))
 
                 # Save Class Timetables with explicit venue information
+                logger.info("Starting to save class timetables.")
                 for (year, section), timetable in generator.all_timetables.items():
                     formatted_timetable = {}
                     free_hours = defaultdict(list)
@@ -757,9 +762,6 @@ def save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df
                                     'type': cell.get('type', 'N/A'),
                                     'venue': cell.get('venue', 'N/A')  # Ensure venue is included
                                 }
-                                # Print debug information
-                                if 'venue' in cell:
-                                    print(f"Saving venue {cell['venue']} for {year}-{section} {day} {slot}")
                             else:
                                 formatted_timetable[day][slot] = cell
                                 if cell == "FREE" and slot not in ["BREAK", "LUNCH"]:
@@ -778,6 +780,7 @@ def save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df
                     })
 
                 # Save Teacher Timetables with venue information
+                logger.info("Starting to save teacher timetables.")
                 teacher_schedules = defaultdict(lambda: defaultdict(dict))
                 teacher_free_hours = defaultdict(lambda: defaultdict(list))
 
@@ -845,24 +848,15 @@ def save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df
                         'free_hours': json.dumps(dict(venue_free_hours[str(venue_id)]))
                     })
 
-                print(f"Timetables saved in schema: {schema_name}")
+                logger.info(f"Timetables successfully saved in schema: {schema_name}")
                 return True
 
     except Exception as e:
-        print(f"Database save error: {str(e)}")
+        logger.error(f"Database save error: {str(e)}", exc_info=True)
         traceback.print_exc()
         return False
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename='timetable_generator.log'
-)
-logger = logging.getLogger(__name__)
-
-app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+logger = logging.getLogger('timetable_api')
 
 # Global variables with type hints
 current_generator: GlobalTimeTableGenerator = None
@@ -871,290 +865,202 @@ current_faculty_df: pd.DataFrame = None
 current_cdc_df: pd.DataFrame = None
 current_venues: Dict = None
 
-@app.route('/generate_timetable', methods=['POST'])
-def generate_timetable():
-    global current_generator, current_all_sections_data, current_faculty_df, current_cdc_df, current_venues
-    
+router = APIRouter()
+
+def prepare_timetable_data(form: dict, files: dict):
     try:
-        # Get section configuration from request
         section_config = None
-        if 'sectionConfig' in request.form:
-            try:
-                section_config = json.loads(request.form['sectionConfig'])
-                # Convert string keys to integers
-                section_config = {int(k): v for k, v in section_config.items()}
-                logger.info(f"Received section configuration: {section_config}")
-            except Exception as e:
-                logger.error(f"Error parsing section configuration: {e}")
-                return jsonify({
-                    'status': 'error',
-                    'message': f'Invalid section configuration: {str(e)}'
-                }), 400
+        if 'sectionConfig' in form and form['sectionConfig']:
+            section_config = json.loads(form['sectionConfig'])
+            section_config = {int(k): v for k, v in section_config.items()}
+            logger.info(f"Received section configuration: {section_config}")
 
-        # Validate file uploads
-        required_files = ['faculty', 'subjects', 'venues', 'cdc']
-        for file_key in required_files:
-            if file_key not in request.files:
-                logger.error(f'Missing {file_key} file')
-                return jsonify({
-                    'status': 'error', 
-                    'message': f'Missing {file_key} file'
-                }), 400
-
-        # Save uploaded files
         upload_dir = 'temp_uploads'
         os.makedirs(upload_dir, exist_ok=True)
-        
+
         file_paths = {}
-        for file_key in required_files:
-            file = request.files[file_key]
-            file_path = os.path.join(upload_dir, f'{file_key}.csv')
-            file.save(file_path)
-            file_paths[file_key] = file_path
-            logger.info(f'Saved {file_key} file to {file_path}')
+        for key in ['faculty', 'subjects', 'venues', 'cdc']:
+            if key not in files:
+                raise ValueError(f"Missing required file: {key}")
+            content = files[key]
+            if hasattr(content, "read"):
+                content = content.read() if not callable(content.read) else content.read()
+            file_path = os.path.join(upload_dir, f"{key}.csv")
+            with open(file_path, "wb") as f:
+                f.write(content if isinstance(content, bytes) else content.encode())
+            file_paths[key] = file_path
 
-        # Initialize timetable generator with section configuration
-        current_generator = GlobalTimeTableGenerator(section_config=section_config)
-        current_generator.initialize_empty_timetables()
+        generator = GlobalTimeTableGenerator(section_config=section_config)
+        generator.initialize_empty_timetables()
 
-        # Process data
-        current_faculty_df = pd.read_csv(file_paths['faculty'])
-        # Pass faculty_df to create_sample_data
-        subjects_df = create_sample_data(file_paths['subjects'], current_faculty_df)
-        current_venues = load_venue_data(file_paths['venues'])
-        current_cdc_df = pd.read_csv(file_paths['cdc'])
-        
-        # Process faculty allocations
-        faculty_allocations = process_faculty_data(current_faculty_df)
+        faculty_df = pd.read_csv(file_paths['faculty'])
+        subjects_df = create_sample_data(file_paths['subjects'], faculty_df)
+        venues = load_venue_data(file_paths['venues'])
+        cdc_df = pd.read_csv(file_paths['cdc'])
 
-        # Prepare sections data using the configured sections
-        current_all_sections_data = {}
-        for year, sections in current_generator.sections.items():
+        faculty_allocations = process_faculty_data(faculty_df)
+
+        all_sections_data: Dict = {}
+        for year, sections in generator.sections.items():
             for section in sections:
-                # Get regular subjects
-                section_subjects = get_subjects_for_section(
-                    year, section, subjects_df, faculty_allocations
-                )
-                
-                # Add CDC subjects
-                cdc_subjects = get_cdc_subjects_for_section(
-                    year, section, current_cdc_df, faculty_allocations
-                )
-                
-                # Combine subjects
-                if section_subjects or cdc_subjects:
-                    current_all_sections_data[(year, section)] = (
-                        section_subjects + cdc_subjects
-                    )
+                regular_subjects = get_subjects_for_section(year, section, subjects_df, faculty_allocations)
+                cdc_subjects = get_cdc_subjects_for_section(year, section, cdc_df, faculty_allocations)
+                all_sections_data[(year, section)] = regular_subjects + cdc_subjects
 
-        # Generate timetables
-        if current_generator.generate_all_timetables(current_all_sections_data, current_venues):
-            # Prepare timetable data for frontend
-            timetable_data = {}
-            for (year, section), timetable in current_generator.all_timetables.items():
-                formatted_timetable = {}
-                for day, day_schedule in timetable.items():
-                    formatted_timetable[day] = {}
-                    for slot, slot_data in day_schedule.items():
-                        if isinstance(slot_data, dict):
-                            formatted_timetable[day][slot] = {
-                                'code': slot_data.get('code', 'N/A'),
-                                'teacher': slot_data.get('teacher', 'N/A'),
-                                'type': slot_data.get('type', 'N/A'),
-                                'venue': slot_data.get('venue', 'N/A')
-                            }
-                        else:
-                            formatted_timetable[day][slot] = slot_data
-                
-                timetable_data[f"Year {year} Section {section}"] = formatted_timetable
-
-            # Perform validation
-            validation_result = current_generator.validate_all_timetables(current_all_sections_data)
-            venue_validation = current_generator.validate_venue_schedules()
-
-            logger.info('Timetables generated successfully')
-            return jsonify({
-                'status': 'success',
-                'timetables': timetable_data,
-                'validation': {
-                    'subject_hours': validation_result,
-                    'venue_clashes': venue_validation
-                }
-            })
-        else:
-            logger.error('Failed to generate valid timetables')
-            return jsonify({
-                'status': 'error',
-                'message': 'Failed to generate valid timetables'
-            }), 500
+        return generator, all_sections_data, faculty_df, cdc_df, venues
 
     except Exception as e:
-        logger.error(f'Error in timetable generation: {str(e)}')
-        traceback.print_exc()
-        
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
-    finally:
-        # Cleanup temporary files
-        for file_path in file_paths.values():
-            try:
-                os.remove(file_path)
-            except Exception as e:
-                logger.error(f'Error removing temporary file {file_path}: {e}')
+        logger.error(f"Exception during data preparation: {str(e)}")
+        raise
 
-@app.route('/save_timetables', methods=['POST'])
-def save_timetables():
-    global current_generator, current_all_sections_data, current_faculty_df, current_cdc_df, current_venues
-    
+@router.post("/api/generate-timetable")
+async def generate_timetable_fastapi(
+    sectionConfig: str = Form(None),
+    faculty: UploadFile = File(...),
+    subjects: UploadFile = File(...),
+    venues: UploadFile = File(...),
+    cdc: UploadFile = File(...)
+):
     try:
-        # Retrieve connection URI from environment variables
-        connection_uri = os.getenv('DATABASE_URI')
-        
-        if not connection_uri:
-            logger.error("DATABASE_URI not found in environment variables")
-            return jsonify({
-                'status': 'error',
-                'message': 'Database configuration not found'
-            }), 400
-        
-        # Validate that all required data is available
-        if not all([
-            current_generator, 
-            current_all_sections_data, 
-            current_faculty_df is not None,
-            current_cdc_df is not None,
-            current_venues
-        ]):
-            missing_data = []
-            if not current_generator:
-                missing_data.append("timetable generator")
-            if not current_all_sections_data:
-                missing_data.append("sections data")
-            if current_faculty_df is None:
-                missing_data.append("faculty data")
-            if current_cdc_df is None:
-                missing_data.append("CDC data")
-            if not current_venues:
-                missing_data.append("venue data")
-            
-            logger.error(f"Missing required data: {', '.join(missing_data)}")
-            return jsonify({
-                'status': 'error',
-                'message': f'Missing required data: {", ".join(missing_data)}'
-            }), 400
-        
-        # Save timetables to database
-        success = save_timetables_to_database(
-            generator=current_generator,
-            all_sections_data=current_all_sections_data,
-            faculty_df=current_faculty_df,
-            cdc_df=current_cdc_df,
-            venues=current_venues,
-            connection_uri=connection_uri
-        )
-        
-        if success:
-            # Get the schema name (it's the most recent one)
-            engine = create_engine(connection_uri)
-            with engine.connect() as connection:
-                result = connection.execute(text("""
-                    SELECT SCHEMA_NAME 
-                    FROM INFORMATION_SCHEMA.SCHEMATA 
-                    WHERE SCHEMA_NAME LIKE 'timetable_%' 
-                    ORDER BY SCHEMA_NAME DESC 
-                    LIMIT 1
-                """))
-                schema_name = result.fetchone()[0]
+        files = {"faculty": faculty, "subjects": subjects, "venues": venues, "cdc": cdc}
+        form = {"sectionConfig": sectionConfig}
+        files = {k: await v.read() for k, v in files.items()}
+        generator, all_sections_data, faculty_df, cdc_df, venues = prepare_timetable_data(form, files)
 
-            logger.info(f"Timetables saved successfully in schema: {schema_name}")
-            return jsonify({
-                'status': 'success',
-                'message': 'Timetables saved to database',
-                'schema': schema_name
-            })
-        else:
-            logger.error("Failed to save timetables")
-            return jsonify({
-                'status': 'error',
-                'message': 'Failed to save timetables'
-            }), 500
-    
-    except SQLAlchemyError as e:
-        logger.error(f"Database error in save_timetables: {str(e)}")
-        return jsonify({
-            'status': 'error',
-            'message': f'Database error: {str(e)}'
-        }), 500
-    
+        logger.info("Starting timetable generation process")
+        success = generator.generate_all_timetables(all_sections_data, venues)
+
+        if not success:
+            return {"status": "error", "message": "Failed to generate timetable after multiple attempts"}
+
+        logger.info("Saving timetables to database")
+        connection_uri = os.getenv("TIMETABLE_DB_URI")
+        saved = save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df, venues, connection_uri)
+
+        if not saved:
+            return {"status": "error", "message": "Timetable generation succeeded but saving to DB failed"}
+
+        return {"status": "success", "message": "Timetable generated and saved successfully"}
+
     except Exception as e:
-        logger.error(f"Unexpected error in save_timetables: {str(e)}")
-        traceback.print_exc()
-        return jsonify({
-            'status': 'error',
-            'message': f'Unexpected error: {str(e)}'
-        }), 500
+        logger.error(f"Exception during timetable generation: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.route('/validate_timetables', methods=['GET'])
-def validate_timetables():
-    global current_generator, current_all_sections_data
-    
+@router.post("/api/save-timetable-db")
+async def save_timetable_to_db_fastapi(
+    sectionConfig: str = Form(None),
+    faculty: UploadFile = File(...),
+    subjects: UploadFile = File(...),
+    venues: UploadFile = File(...),
+    cdc: UploadFile = File(...)
+):
     try:
-        if not current_generator or not current_all_sections_data:
-            logger.error('Timetables not generated for validation')
-            return jsonify({
-                'status': 'error',
-                'message': 'Generate timetables first'
-            }), 400
-        
-        # Perform validation
-        subject_hours_validation = current_generator.validate_all_timetables(current_all_sections_data)
-        venue_validation = current_generator.validate_venue_schedules()
-        
-        logger.info('Timetables validated successfully')
-        return jsonify({
-            'status': 'success',
-            'validation': {
-                'subject_hours': subject_hours_validation,
-                'venue_clashes': venue_validation
-            }
-        })
-    
+        files = {"faculty": faculty, "subjects": subjects, "venues": venues, "cdc": cdc}
+        form = {"sectionConfig": sectionConfig}
+        files = {k: await v.read() for k, v in files.items()}
+        generator, all_sections_data, faculty_df, cdc_df, venues = prepare_timetable_data(form, files)
+
+        logger.info("Saving timetables to database")
+        connection_uri = os.getenv("TIMETABLE_DB_URI")
+        saved = save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df, venues, connection_uri)
+
+        if not saved:
+            return {"status": "error", "message": "Saving to DB failed"}
+
+        return {"status": "success", "message": "Timetables saved successfully"}
+
     except Exception as e:
-        logger.error(f'Validation error: {str(e)}')
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
+        logger.error(f"Exception during DB save: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Error handler for 404
-@app.errorhandler(404)
-def not_found(error):
-    logger.error(f'404 error: {error}')
-    return jsonify({
-        'status': 'error',
-        'message': 'Endpoint not found'
-    }), 404
+@router.post("/api/validate-timetable")
+async def validate_generated_timetable(
+    sectionConfig: str = Form(None),
+    faculty: UploadFile = File(...),
+    subjects: UploadFile = File(...),
+    venues: UploadFile = File(...),
+    cdc: UploadFile = File(...)
+):
+    try:
+        files = {"faculty": faculty, "subjects": subjects, "venues": venues, "cdc": cdc}
+        form = {"sectionConfig": sectionConfig}
+        files = {k: await v.read() for k, v in files.items()}
+        generator, all_sections_data, *_ = prepare_timetable_data(form, files)
+        return validate_timetable(generator, all_sections_data)
+    except Exception as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Error handler for 500
-@app.errorhandler(500)
-def server_error(error):
-    logger.error(f'500 error: {error}')
-    return jsonify({
-        'status': 'error',
-        'message': 'Internal server error'
-    }), 500
+@router.post("/api/schedule/classes")
+async def fetch_class_schedule(
+    sectionConfig: str = Form(None),
+    faculty: UploadFile = File(...),
+    subjects: UploadFile = File(...),
+    venues: UploadFile = File(...),
+    cdc: UploadFile = File(...)
+):
+    try:
+        files = {"faculty": faculty, "subjects": subjects, "venues": venues, "cdc": cdc}
+        form = {"sectionConfig": sectionConfig}
+        files = {k: await v.read() for k, v in files.items()}
+        generator, *_ = prepare_timetable_data(form, files)
+        return get_class_schedule(generator)
+    except Exception as e:
+        logger.error(f"Class schedule fetch error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == '__main__':
-    # Ensure temp_uploads directory exists
-    os.makedirs('temp_uploads', exist_ok=True)
-    
-    # Run the app
-    app.run(
-        debug=True, 
-        host='0.0.0.0',  # Make server publicly available
-        port=5000,
-        threaded=True  # Enable threading for better performance
-    )
+@router.post("/api/schedule/teachers")
+async def fetch_teacher_schedule(
+    sectionConfig: str = Form(None),
+    faculty: UploadFile = File(...),
+    subjects: UploadFile = File(...),
+    venues: UploadFile = File(...),
+    cdc: UploadFile = File(...)
+):
+    try:
+        files = {"faculty": faculty, "subjects": subjects, "venues": venues, "cdc": cdc}
+        form = {"sectionConfig": sectionConfig}
+        files = {k: await v.read() for k, v in files.items()}
+        generator, *_ = prepare_timetable_data(form, files)
+        return get_teacher_schedule(generator)
+    except Exception as e:
+        logger.error(f"Teacher schedule fetch error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/api/schedule/venues")
+async def fetch_venue_schedule(
+    sectionConfig: str = Form(None),
+    faculty: UploadFile = File(...),
+    subjects: UploadFile = File(...),
+    venues: UploadFile = File(...),
+    cdc: UploadFile = File(...)
+):
+    try:
+        files = {"faculty": faculty, "subjects": subjects, "venues": venues, "cdc": cdc}
+        form = {"sectionConfig": sectionConfig}
+        files = {k: await v.read() for k, v in files.items()}
+        generator, *_ = prepare_timetable_data(form, files)
+        return get_venue_schedule(generator)
+    except Exception as e:
+        logger.error(f"Venue schedule fetch error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Additional logic endpoints from former Flask routes
+
+def validate_timetable(generator: GlobalTimeTableGenerator, all_sections_data: Dict) -> Dict:
+    valid_structure = generator.validate_all_timetables(all_sections_data)
+    venue_validation = generator.validate_venue_schedules()
+    return {
+        "structure_valid": valid_structure,
+        "has_venue_clashes": venue_validation['has_clashes'],
+        "clash_details": venue_validation['clash_details']
+    }
+
+def get_class_schedule(generator: GlobalTimeTableGenerator) -> Dict:
+    return generator.all_timetables
+
+def get_teacher_schedule(generator: GlobalTimeTableGenerator) -> Dict:
+    return generator.global_teacher_schedule
+
+def get_venue_schedule(generator: GlobalTimeTableGenerator) -> Dict:
+    return generator.global_venue_schedule

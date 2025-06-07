@@ -15,6 +15,19 @@ from datetime import datetime
 import bcrypt
 from pydantic import BaseModel, Field, field_validator
 
+from gentt import (
+    GlobalTimeTableGenerator,
+    prepare_timetable_data,
+    validate_timetable,
+    save_timetables_to_database)
+
+app = FastAPI(
+    title="Timetable and Allocator API",
+    description="Comprehensive API for timetable generation, validation, and schedule retrieval",
+    version="1.0.0"
+)
+# from gentt import router as timetable_router
+
 # Load environment variables
 load_dotenv()
 
@@ -29,7 +42,6 @@ def setup_logging():
         maxBytes=10*1024*1024,  # 10MB
         backupCount=5
     )
-    
     # Console handler
     console_handler = logging.StreamHandler()
     
@@ -68,7 +80,7 @@ app = FastAPI(
     description="Comprehensive API for timetable management and department allocation",
     version="1.0.0"
 )
-
+# app.include_router(timetable_router)
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
@@ -1473,19 +1485,74 @@ def get_specific_timetable(schema_name: str):
         if conn:
             conn.close()
 
+@app.post("/api/generate-timetable")
+async def generate_timetable_fastapi(
+    sectionConfig: Optional[str] = Form(None),
+    faculty: UploadFile = File(...),
+    subjects: UploadFile = File(...),
+    venues: UploadFile = File(...),
+    cdc: UploadFile = File(...),
+):
+    try:
+        # 1. Prepare the data using the function from gentt.py
+        files = {
+            "faculty": faculty,
+            "subjects": subjects,
+            "venues": venues,
+            "cdc": cdc,
+        }
+        form = {"sectionConfig": sectionConfig}
+
+        # Read file content before passing to prepare_timetable_data
+        files_content = {k: await v.read() for k, v in files.items()}
+
+        # Call the prepare_timetable_data function
+        generator, all_sections_data, faculty_df, cdc_df, venues_data = prepare_timetable_data(form, files_content)
+
+        # 2. Generate timetables using the GlobalTimeTableGenerator instance
+        logger.info("Starting timetable generation process")
+        generation_success = generator.generate_all_timetables(all_sections_data, venues_data)
+
+        if not generation_success:
+            logger.error("Failed to generate timetable after multiple attempts")
+            raise HTTPException(status_code=500, detail="Failed to generate timetable after multiple attempts")
+
+        # 3. Save timetables to the database
+        logger.info("Saving timetables to database")
+        connection_uri = os.getenv("DATABASE_URI")
+        if not connection_uri:
+            raise HTTPException(status_code=500, detail="Database connection URI not configured.")
+
+        save_success = save_timetables_to_database(generator, all_sections_data, faculty_df, cdc_df, venues_data, connection_uri)
+
+        if not save_success:
+            logger.error("Timetable generation succeeded but saving to DB failed")
+            raise HTTPException(status_code=500, detail="Timetable generation succeeded but saving to DB failed.")
+
+        # 4. Perform validation and return results
+        validation_results = validate_timetable(generator, all_sections_data)
+
+        logger.info("Timetable generated and saved successfully")
+        return {
+            "status": "success",
+            "message": "Timetable generated and saved successfully",
+            "validation_summary": {
+                "subject_hours_valid": validation_results.get("structure_valid", False),
+                "venue_clashes": validation_results.get("has_venue_clashes", False)
+            }
+        }
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Exception during timetable generation: {str(e)}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Timetable generation failed: {str(e)}")
+
+
 # Main Execution
 if __name__ == "__main__":
     import uvicorn
-    
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler("server.log"),
-            logging.StreamHandler()
-        ]
-    )
-    
+
     uvicorn.run(
         "main:app", 
         host="0.0.0.0", 

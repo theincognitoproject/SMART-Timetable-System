@@ -38,7 +38,7 @@ const GenerateTimetable = ({ onBack, isDarkMode, toggleTheme }) => {
   const fullText = "Upload Files to Generate Timetable";
 
   // Backend URL (adjust as needed)
-  const BACKEND_URL = 'http://localhost:5000';
+  const BACKEND_URL = 'http://localhost:8000'; // Assuming FastAPI runs on port 8000
 
   // Typing effect hook
   useEffect(() => {
@@ -133,7 +133,8 @@ const GenerateTimetable = ({ onBack, isDarkMode, toggleTheme }) => {
   try {
     setGenerationStatus('Generating timetables...');
 
-    const response = await axios.post(`${BACKEND_URL}/generate_timetable`, formData, {
+    // Update endpoint path to the FastAPI generate endpoint
+    const response = await axios.post(`${BACKEND_URL}/api/generate-timetable`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       },
@@ -141,46 +142,24 @@ const GenerateTimetable = ({ onBack, isDarkMode, toggleTheme }) => {
         const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
         setGenerationStatus(`Uploading: ${percentCompleted}%`);
       },
-      timeout: 300000 // 5 minutes timeout
+      timeout: 600000 // Increased timeout for generation and save (10 minutes)
     });
 
-      // Handle successful generation
+      // Handle successful generation and saving (as backend does both now)
       if (response.data.status === 'success') {
-        setGenerationStatus('Timetables generated successfully!');
+        setGenerationStatus(response.data.message || 'Timetables generated and saved successfully!');
+        // The backend response structure might change, adjust these lines if needed
+        // based on what your FastAPI /api/generate-timetable endpoint returns.
+        // If it returns timetable data and validation results, you can set them here.
         setTimetableData(response.data.timetables);
         setValidationResults(response.data.validation);
-  
-        // Automatically save to database
-        try {
-          setGenerationStatus('Saving timetables to database...');
-          
-          const saveResponse = await axios.post(`${BACKEND_URL}/save_timetables`, 
-            {}, 
-            { 
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              timeout: 300000 
-            }
-          );
-  
-          if (saveResponse.data.status === 'success') {
-            setGenerationStatus('Timetables generated and saved successfully!');
-          } else {
-            setGenerationStatus('Timetables generated, but database save failed');
-          }
-        } catch (saveError) {
-          setGenerationStatus('Timetables generated, but database save encountered an error');
-          console.error('Database save error:', saveError);
-        }
       } else {
-        setGenerationStatus('Timetable generation failed');
-        alert(response.data.message || 'Failed to generate timetables');
+        setGenerationStatus('Timetable generation and saving failed');
+        alert(response.data.message || 'Failed to generate and save timetables');
+        setTimetableData(null);
+        setValidationResults(null);
       }
     } catch (error) {
-      console.error('Timetable generation error:', error);
-      
-      // Detailed error handling
       if (error.response) {
         setGenerationStatus(`Error: ${error.response.data.message || 'Server error'}`);
         alert(`Generation Error: ${error.response.data.message}`);
@@ -191,6 +170,8 @@ const GenerateTimetable = ({ onBack, isDarkMode, toggleTheme }) => {
         setGenerationStatus('Error setting up the request');
         alert('Error setting up the timetable generation request');
       }
+      console.error('Timetable generation error:', error);
+ setTimetableData(null);
     }
   };
 
