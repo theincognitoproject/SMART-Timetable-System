@@ -38,7 +38,7 @@ const GenerateTimetable = ({ onBack, isDarkMode, toggleTheme }) => {
   const fullText = "Upload Files to Generate Timetable";
 
   // Backend URL (adjust as needed)
-  const BACKEND_URL = 'http://localhost:8000'; // Assuming FastAPI runs on port 8000
+  const BACKEND_URL = 'https://timetable-backend-tz59.onrender.com'; // Assuming FastAPI runs on port 8000
 
   // Typing effect hook
   useEffect(() => {
