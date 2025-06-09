@@ -2,7 +2,7 @@ import axios from 'axios';
 import { API_CONFIG } from '../config';
 
 const axiosInstance = axios.create({
-  baseURL: API_CONFIG.BASE_URL || 'http://localhost:8000/api',
+  baseURL: API_CONFIG.BASE_URL || 'https://timetable-backend-tz59.onrender.com/api',
   timeout: 300000, // 5 minutes
   headers: {
     'Content-Type': 'application/json'

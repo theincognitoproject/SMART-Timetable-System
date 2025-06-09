@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.REACT_APP_BACKEND_URL || 'https://smart-timetable-system.onrender.com/',
+  BASE_URL: import.meta.env.REACT_APP_BACKEND_URL || 'https://timetable-backend-tz59.onrender.com/api',
   AUTH: {
     username: import.meta.env.VITE_AUTH_USERNAME || '',
     password: import.meta.env.VITE_AUTH_PASSWORD || ''

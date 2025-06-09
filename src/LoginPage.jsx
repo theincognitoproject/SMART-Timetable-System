@@ -24,7 +24,7 @@ const LoginPage = ({ onLoginSuccess }) => {
     setIsLoading(true);
     
     try {
-      const response = await fetch('http://localhost:8000/api/login', {
+      const response = await fetch('https://timetable-backend-tz59.onrender.com/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
