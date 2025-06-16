@@ -1,7 +1,6 @@
 <div align="center">
-  <img src="path/to/your/logo.png" alt="Timetable Scheduler Logo" width="200">
   
-  # 🕒 Timetable Scheduler Pro 🎓
+  # 🕒 SMART Timetable System🎓
 
   ### Transforming Academic Scheduling with Intelligent Automation
 
@@ -74,6 +73,5 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the server (in separate terminals)
-python gentt.py
+# Run the server 
 uvicorn main:app --reload
