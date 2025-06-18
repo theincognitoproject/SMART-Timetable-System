@@ -204,7 +204,7 @@ def get_login_db_connection():
             password=password,
             database='login_details',
             port=port,
-            ssl_disabled=True
+            ssl_disabled=False
         )
         return conn
     except MySQLError as err:
