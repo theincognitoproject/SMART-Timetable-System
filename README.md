@@ -1,6 +1,6 @@
 <div align="center">
   
-  # 🕒 Timetable Scheduler Pro 🎓
+  # 🕒 SMART Timetable System🎓
 
   ### Transforming Academic Scheduling with Intelligent Automation
 
@@ -73,7 +73,8 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the server (in separate terminals)
+=======
+# Run the server 
 uvicorn main:app --reload
 ```
 
